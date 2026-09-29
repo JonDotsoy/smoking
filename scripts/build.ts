@@ -6,13 +6,14 @@ const dist = join(root, "dist");
 
 await rm(dist, { recursive: true, force: true });
 
-// Bundles the CLI and its dependencies (donly) into a single file, so the
-// published package needs no `dependencies`.
+// Bundles the CLI into a single file. `donly` is left out of the bundle
+// (external) and declared as a runtime dependency of the published package.
 const build = await Bun.build({
   entrypoints: [join(root, "bin", "smoking.ts")],
   outdir: dist,
   naming: "smoking.ts",
   target: "bun",
+  external: ["donly"],
 });
 if (!build.success) {
   for (const log of build.logs) console.error(log);
@@ -28,6 +29,7 @@ const distPkg = {
   license: pkg.license,
   author: pkg.author,
   type: pkg.type,
+  dependencies: { donly: pkg.dependencies.donly },
   bin: { smoking: "smoking.ts" },
 };
 await Bun.write(join(dist, "package.json"), JSON.stringify(distPkg, null, 2) + "\n");
