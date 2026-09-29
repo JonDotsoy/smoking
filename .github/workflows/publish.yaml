@@ -21,6 +21,10 @@ on:
           - demo
           - beta
           - alpha
+      provenance:
+        description: Publish with --provenance
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -59,7 +63,9 @@ jobs:
       # runs through npm rather than `bun publish`; everything else above
       # stays on Bun per this repo's CLAUDE.md. Trusted Publishing must also
       # be configured for this package on npmjs.com, pointing at this
-      # repo/workflow file.
+      # repo/workflow file. `id-token: write` covers that OIDC auth either
+      # way; the `provenance` input only controls whether `--provenance`
+      # (Sigstore attestations) is additionally requested.
       - name: Setup Node for npm OIDC publish
         uses: actions/setup-node@v4
         with:
@@ -70,4 +76,4 @@ jobs:
         run: npm install -g npm@latest
 
       - name: Publish
-        run: npm publish --tag ${{ inputs.tag }} --access public --provenance
+        run: npm publish --tag ${{ inputs.tag }} --access public ${{ inputs.provenance && '--provenance' || '' }}
