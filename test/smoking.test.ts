@@ -3,50 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EXAMPLE_DONLY } from "../src/help.ts";
+import { FIXTURES_DIR, REPO_ROOT, runCli, runCliWithArgs } from "./helpers.ts";
 import { result } from "../src/utils/result.ts";
-
-const CLI_PATH = join(import.meta.dir, "..", "bin", "smoking.ts");
-const FIXTURES_DIR = join(import.meta.dir, "fixtures");
-const REPO_ROOT = join(import.meta.dir, "..");
-
-const normalize = (output: string): string =>
-  output
-    .replaceAll(REPO_ROOT, "<repo>")
-    .replaceAll(/\/tmp\/smoking-run-[^/]+/g, "/tmp/smoking-run-<random>")
-    .replaceAll(/Bun v[\d.]+ \([^)]+\)/g, "Bun v<version> (<platform>)")
-    .replaceAll(/^bun (\w+) v[\d.]+ \([0-9a-f]+\)$/gm, "bun $1 v<version> (<hash>)")
-    // Newer Bun versions, when they detect GitHub Actions, add an `::error`
-    // annotation line and drop the internal `loadAndEvaluateModule` frame;
-    // strip both (and collapse the blank line left behind) so the snapshot
-    // is the same locally and in CI regardless of Bun version.
-    .replaceAll(/^::error[^\n]*\n/gm, "")
-    .replaceAll(/^[ \t]*at loadAndEvaluateModule \([^)]*\)\n/gm, "")
-    .replaceAll(/\n{3,}/g, "\n\n")
-    // `bun add`'s own noise: whether it needs to resolve/download, and how
-    // long that takes, depends on whatever's already in the local package
-    // cache rather than on the CLI's own behavior.
-    .replaceAll(/^Resolving dependencies\n/gm, "")
-    .replaceAll(/^Resolved, downloaded and extracted \[\d+\]\n/gm, "")
-    .replaceAll(/^\[[\d.]+m?s\] done\n/gm, "")
-    .replaceAll(/^\d+ packages? (?:installed|removed) \[[\d.]+m?s\]\n/gm, "");
-
-const runCliWithArgs = (args: string[]) => {
-  // `smoking` runs each file in its own scratch temp directory (installing
-  // dependencies and running case scripts there), so it never touches this
-  // repo's own package.json/node_modules regardless of the cwd it's run from.
-  const result = Bun.spawnSync(["bun", CLI_PATH, ...args], {
-    cwd: REPO_ROOT,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  return {
-    exitCode: result.exitCode,
-    stdout: normalize(result.stdout.toString()),
-    stderr: normalize(result.stderr.toString()),
-  };
-};
-
-const runCli = (fixture: string) => runCliWithArgs([join(FIXTURES_DIR, fixture)]);
 
 describe("smoking CLI", () => {
   test("runs a mix of passing and failing cases", () => {
