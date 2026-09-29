@@ -1,0 +1,10 @@
+dependency hotconfigs@1.0.8
+
+case uses-hotconfigs {
+  env FOO tar
+  run <<<ts
+    import { load, string } from "hotconfigs"
+    const configs = await load({ FOO: string() })
+    if (configs.FOO.get() !== "tar") throw new Error("unexpected FOO: " + configs.FOO.get())
+    console.log("FOO =", configs.FOO.get())
+}

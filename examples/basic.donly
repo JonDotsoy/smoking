@@ -1,0 +1,22 @@
+dependency hotconfigs
+
+case reads-config-from-env {
+  env FOO tar
+  file ./greeting.txt <<<txt
+    hello
+  setup <<<ts
+    console.log("setup: preparing")
+  run <<<ts
+    import { readFileSync } from "node:fs"
+    import { load, string } from "hotconfigs"
+
+    const configs = await load({ FOO: string() })
+    if (configs.FOO.get() !== "tar") throw new Error("FOO should be tar")
+
+    const greeting = readFileSync("./greeting.txt", "utf8").trim()
+    if (greeting !== "hello") throw new Error("unexpected greeting: " + greeting)
+
+    console.log("config and file look good")
+  teardown <<<ts
+    console.log("teardown: cleaning up")
+}

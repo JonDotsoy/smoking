@@ -1,0 +1,7 @@
+case uses-flag-dependencies {
+  run <<<ts
+    import _ from "lodash"
+    import { DON } from "donly"
+    console.log("chunks =", _.chunk([1, 2, 3, 4], 2).length)
+    console.log("parsed =", DON.parse("greeting hello").at("/greeting[1]"))
+}

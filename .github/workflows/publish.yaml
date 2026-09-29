@@ -1,5 +1,7 @@
 name: Publish
 
+run-name: Publish (version=${{ inputs.version }}, tag=${{ inputs.tag }}, provenance=${{ inputs.provenance }})
+
 on:
   workflow_dispatch:
     inputs:
@@ -34,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
+      id-token: write # Required for OIDC
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,6 +50,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Check types
+        run: bun run check
+
       - name: Run tests
         run: bun test
 
@@ -58,6 +63,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           bun pm version ${{ inputs.version }}
           git push origin HEAD:${{ github.ref_name }} --follow-tags
+
+      # After the bump, so dist/package.json gets the new version.
+      - name: Build
+        run: bun run build
 
       # npm's OIDC "Trusted Publisher" flow (no NPM_TOKEN secret needed) is
       # only implemented by the npm CLI today, so the publish step itself
@@ -77,4 +86,22 @@ jobs:
         run: npm install -g npm@latest
 
       - name: Publish
-        run: npm publish --tag ${{ inputs.tag }} --access public ${{ inputs.provenance && '--provenance' || '' }}
+        run: npm publish dist/ --tag ${{ inputs.tag }} --access public ${{ inputs.provenance && '--provenance' || '' }}
+
+      - name: Summary
+        if: always()
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          {
+            echo "## Publish"
+            echo ""
+            echo "| Input | Value |"
+            echo "| --- | --- |"
+            echo "| Version bump | \`${{ inputs.version }}\` |"
+            echo "| Tag | \`${{ inputs.tag }}\` |"
+            echo "| Provenance | \`${{ inputs.provenance }}\` |"
+            echo ""
+            echo "**Version:** \`$VERSION\`"
+            echo ""
+            echo "**Result:** \`${{ job.status }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

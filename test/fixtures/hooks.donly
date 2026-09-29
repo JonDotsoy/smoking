@@ -1,0 +1,36 @@
+case hooks-in-order {
+  file ./log.txt <<<txt
+    start
+  setup <<<ts
+    import { appendFileSync } from "node:fs"
+    appendFileSync("./log.txt", "setup\n")
+    console.log("setup ran")
+  run <<<ts
+    import { readFileSync } from "node:fs"
+    console.log("run sees", JSON.stringify(readFileSync("./log.txt", "utf8")))
+  teardown <<<ts
+    console.log("teardown ran")
+}
+
+case setup-fails {
+  setup <<<ts
+    process.exit(2)
+  run <<<ts
+    console.log("run must not execute")
+  teardown <<<ts
+    console.log("teardown after failed setup")
+}
+
+case run-fails {
+  run <<<ts
+    process.exit(4)
+  teardown <<<ts
+    console.log("teardown after failed run")
+}
+
+case teardown-fails {
+  run <<<ts
+    console.log("run ok")
+  teardown <<<ts
+    process.exit(3)
+}

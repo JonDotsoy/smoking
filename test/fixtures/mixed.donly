@@ -1,0 +1,11 @@
+case pass {
+  env FOO tar
+  run <<<ts
+    if (process.env.FOO !== "tar") throw new Error("env FOO not injected")
+    console.log("FOO =", process.env.FOO)
+}
+
+case fail {
+  run <<<ts
+    throw new Error("intentional failure")
+}

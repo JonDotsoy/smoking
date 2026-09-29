@@ -1,0 +1,13 @@
+case setup-and-teardown-from-files {
+  setup ../configs/setup.ts
+  run <<<ts
+    import { readFileSync } from "node:fs"
+    console.log("run sees:", readFileSync("./from-setup.txt", "utf8"))
+  teardown ../configs/teardown.js
+}
+
+case missing-setup-file {
+  setup ../configs/does-not-exist.ts
+  run <<<ts
+    console.log("run must not execute")
+}

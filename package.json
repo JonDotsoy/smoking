@@ -1,0 +1,40 @@
+{
+  "name": "@jondotsoy/smoking",
+  "version": "0.0.10",
+  "description": "Run test cases described in .donly files (DON) with Bun or Node",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonDotsoy/smoking.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Jonathan Delgado",
+    "email": "hi@jon.soy",
+    "url": "https://jon.soy"
+  },
+  "type": "module",
+  "private": true,
+  "bin": {
+    "smoking": "bin/smoking.ts"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "check": "tsc --noEmit && prettier --check .",
+    "fmt": "prettier --write .",
+    "build": "bun run scripts/build.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.9.9"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "donly": "^0.0.29"
+  }
+}

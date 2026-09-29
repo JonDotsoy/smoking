@@ -1,0 +1,9 @@
+case did {
+  file ./file.txt <<<txt
+    Content
+  run <<<ts
+    import { readFileSync } from "node:fs"
+    const content = readFileSync("./file.txt", "utf8").trim()
+    if (content !== "Content") throw new Error("unexpected file content: " + JSON.stringify(content))
+    console.log("file content =", content)
+}
