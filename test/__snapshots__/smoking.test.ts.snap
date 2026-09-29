@@ -58,3 +58,19 @@ exports[`smoking CLI installs a \`dependency\` pinned to a specific version: std
 "Saved lockfile
 "
 `;
+
+exports[`smoking CLI installs hotconfigs and reads an env-backed config in the case script: stdout 1`] = `
+"→ installing dependency: hotconfigs
+bun add v1.3.11 (af24e281)
+
+installed hotconfigs@1.0.8
+
+FOO = tar
+✔ uses-hotconfigs
+"
+`;
+
+exports[`smoking CLI installs hotconfigs and reads an env-backed config in the case script: stderr 1`] = `
+"Saved lockfile
+"
+`;

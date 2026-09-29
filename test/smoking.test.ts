@@ -60,4 +60,12 @@ describe("smoking CLI", () => {
     expect(stdout).toMatchSnapshot("stdout");
     expect(stderr).toMatchSnapshot("stderr");
   });
+
+  test("installs hotconfigs and reads an env-backed config in the case script", () => {
+    const { exitCode, stdout, stderr } = runCli("dependency-hotconfigs.donly");
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatchSnapshot("stdout");
+    expect(stderr).toMatchSnapshot("stderr");
+  });
 });
