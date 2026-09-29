@@ -2,7 +2,7 @@ import { DON, Directive, HeredocValue, ROOT_DIRECTIVE_NAME } from "donly";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
-import { result } from "./result.ts";
+import { result } from "./utils/result.ts";
 
 const EXT_BY_DELIMITER: Record<string, string> = {
   ts: "ts",

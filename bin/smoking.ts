@@ -2,7 +2,7 @@
 import { fileURLToPath } from "node:url";
 import { CliArgsError, CliMainArgs } from "../src/cli-main-args.ts";
 import { HELP } from "../src/help.ts";
-import { result } from "../src/result.ts";
+import { result } from "../src/utils/result.ts";
 import { runDonlyFile } from "../src/run-file.ts";
 
 const [parsedOk, error, parsed] = result(() => new CliMainArgs().parse(process.argv.slice(2)));

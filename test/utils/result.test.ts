@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { result } from "../src/result.ts";
+import { result } from "../../src/utils/result.ts";
 
 describe("result()", () => {
   test("resolved promise -> [true, undefined, data]", async () => {

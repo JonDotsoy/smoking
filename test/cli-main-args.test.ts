@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { CliArgsError, CliMainArgs } from "../src/cli-main-args.ts";
-import { result } from "../src/result.ts";
+import { result } from "../src/utils/result.ts";
 
 const parse = (...args: string[]) => new CliMainArgs().parse(args);
 

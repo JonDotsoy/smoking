@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EXAMPLE_DONLY } from "../src/help.ts";
-import { result } from "../src/result.ts";
+import { result } from "../src/utils/result.ts";
 
 const CLI_PATH = join(import.meta.dir, "..", "bin", "smoking.ts");
 const FIXTURES_DIR = join(import.meta.dir, "fixtures");

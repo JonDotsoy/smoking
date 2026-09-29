@@ -22,10 +22,10 @@ Default to using Bun instead of Node.js.
 ## Error handling: `result()`
 
 Don't write `try/catch` (or `try/finally`) in `src/`, `bin/` or tests. Use the
-`result()` utility from `src/result.ts`, which returns errors as values:
+`result()` utility from `src/utils/result.ts`, which returns errors as values:
 
 ```ts
-import { result } from "./result.ts";
+import { result } from "./utils/result.ts";
 
 // Promise (or async function): await it
 const [ok, error, data] = await result(promise);
