@@ -1,4 +1,4 @@
-dependency donly
+dependency donly@0.0.29
 
 case uses-dependency {
   run <<<ts

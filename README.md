@@ -10,6 +10,9 @@ and `case` blocks (each with `env` vars and a `run` heredoc script), and
 npx @jondotsoy/smoking file.donly
 ```
 
+Run `bunx @jondotsoy/smoking --help` for the full file format reference and a
+runnable example.
+
 ## `.donly` file format
 
 ```

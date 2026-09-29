@@ -1,10 +1,24 @@
 #!/usr/bin/env bun
+import { HELP } from "../src/help.ts";
 import { runDonlyFile } from "../src/run-file.ts";
 
-const filePath = process.argv[2];
+const args = process.argv.slice(2);
 
+if (args.includes("-h") || args.includes("--help")) {
+  console.log(HELP);
+  process.exit(0);
+}
+
+const unknownOption = args.find((arg) => arg.startsWith("-"));
+if (unknownOption) {
+  console.error(`Unknown option: ${unknownOption}\n`);
+  console.error(HELP);
+  process.exit(1);
+}
+
+const filePath = args[0];
 if (!filePath) {
-  console.error("Usage: smoking <file.donly>");
+  console.log(HELP);
   process.exit(1);
 }
 

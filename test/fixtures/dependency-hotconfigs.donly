@@ -1,4 +1,4 @@
-dependency hotconfigs
+dependency hotconfigs@1.0.8
 
 case uses-hotconfigs {
   env FOO tar

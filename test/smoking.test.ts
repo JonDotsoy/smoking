@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { EXAMPLE_DONLY } from "../src/help.ts";
 
 const CLI_PATH = join(import.meta.dir, "..", "bin", "smoking.ts");
 const FIXTURES_DIR = join(import.meta.dir, "fixtures");
@@ -25,11 +28,11 @@ const normalize = (output: string): string =>
     .replaceAll(/^\[[\d.]+m?s\] done\n/gm, "")
     .replaceAll(/^\d+ packages? (?:installed|removed) \[[\d.]+m?s\]\n/gm, "");
 
-const runCli = (fixture: string) => {
+const runCliWithArgs = (args: string[]) => {
   // `smoking` runs each file in its own scratch temp directory (installing
   // dependencies and running case scripts there), so it never touches this
   // repo's own package.json/node_modules regardless of the cwd it's run from.
-  const result = Bun.spawnSync(["bun", CLI_PATH, join(FIXTURES_DIR, fixture)], {
+  const result = Bun.spawnSync(["bun", CLI_PATH, ...args], {
     cwd: REPO_ROOT,
     stdout: "pipe",
     stderr: "pipe",
@@ -40,6 +43,8 @@ const runCli = (fixture: string) => {
     stderr: normalize(result.stderr.toString()),
   };
 };
+
+const runCli = (fixture: string) => runCliWithArgs([join(FIXTURES_DIR, fixture)]);
 
 describe("smoking CLI", () => {
   test("runs a mix of passing and failing cases", () => {
@@ -83,5 +88,45 @@ describe("smoking CLI", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toMatchSnapshot("stdout");
     expect(stderr).toMatchSnapshot("stderr");
+  });
+
+  test("--help prints the documented usage and file format", () => {
+    const { exitCode, stdout, stderr } = runCliWithArgs(["--help"]);
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatchSnapshot("stdout");
+    expect(stderr).toBe("");
+  });
+
+  test("running without a file prints the help and exits with an error", () => {
+    const { exitCode, stdout } = runCliWithArgs([]);
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe(runCliWithArgs(["--help"]).stdout);
+  });
+
+  test("rejects unknown options", () => {
+    const { exitCode, stderr } = runCliWithArgs(["--nope"]);
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toMatchSnapshot("stderr");
+  });
+
+  test("the example shown in --help actually passes", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "smoking-help-example-"));
+    try {
+      const examplePath = join(dir, "example.donly");
+      await writeFile(examplePath, EXAMPLE_DONLY);
+
+      const { exitCode, stdout } = runCliWithArgs([examplePath]);
+
+      expect(exitCode).toBe(0);
+      // The example installs the latest hotconfigs, so mask its version.
+      expect(stdout.replace(/installed hotconfigs@[\d.]+/, "installed hotconfigs@<latest>")).toMatchSnapshot(
+        "stdout",
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
