@@ -127,3 +127,28 @@ the version, builds and runs `npm publish dist/` using npm trusted publishing
 ## License
 
 [MIT](LICENSE) © Jonathan Delgado
+
+## YAML files
+
+Cases can also be written in YAML (`.yaml` / `.yml`); the file extension picks
+the format.
+
+```yaml
+dependencies:
+  - hotconfigs
+cases:
+  - name: greets
+    env:
+      FOO: tar
+    files:
+      ./greeting.txt: hello
+    setup: console.log("setting up")
+    run: |
+      import { readFileSync } from "node:fs";
+      if (readFileSync("./greeting.txt", "utf8") !== "hello") throw new Error("bad");
+    teardown:
+      file: ./teardown.ts # or { code: "...", lang: js }
+```
+
+A script (`setup`, `run`, `teardown`) is a string (inline TypeScript),
+`{ file: <path> }` (relative to the YAML file) or `{ code, lang }`.

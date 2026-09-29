@@ -1,0 +1,22 @@
+dependencies:
+  - donly@0.0.28
+cases:
+  - name: pass
+    env:
+      FOO: tar
+    files:
+      ./file.txt: Content
+    setup:
+      code: console.log("setup")
+      lang: js
+    run: |
+      import { readFileSync } from "node:fs"
+      if (process.env.FOO !== "tar") throw new Error("env FOO not injected")
+      console.log("file =", readFileSync("./file.txt", "utf8").trim())
+    teardown:
+      - console.log("teardown")
+  - name: fail
+    run: |
+      throw new Error("intentional failure")
+  - run:
+      file: external/configs/setup.ts

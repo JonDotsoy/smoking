@@ -1,29 +1,8 @@
-import { DON, Directive, HeredocValue, ROOT_DIRECTIVE_NAME } from "donly";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { result } from "./utils/result.ts";
-
-const EXT_BY_DELIMITER: Record<string, string> = {
-  ts: "ts",
-  tsx: "tsx",
-  js: "js",
-  jsx: "jsx",
-  mjs: "mjs",
-};
-
-const argValue = (arg: Directive["args"][number]): string =>
-  arg instanceof HeredocValue ? arg.content : String(arg);
-
-const directivesNamed = (directive: Directive, name: string): Directive[] =>
-  directive.children.filter((child) => child.name === name);
-
-// `DON.parse()` collapses a file with a single top-level directive into
-// that directive itself, instead of wrapping it in a synthetic root — so a
-// `.donly` file with just one `case` and no `dependency` has that `case` as
-// `root` directly, not as a child of it.
-const topLevelDirectives = (root: Directive): Directive[] =>
-  root.name === ROOT_DIRECTIVE_NAME ? root.children : [root];
+import { parseSpec, type CaseSpec, type ScriptSpec, type Spec } from "./spec.ts";
 
 type CaseResult = {
   name: string;
@@ -43,17 +22,11 @@ const installDependency = async (spec: string, cwd: string): Promise<void> => {
   }
 };
 
-const writeFileDirective = async (fileDirective: Directive, workDir: string): Promise<void> => {
-  const [relativePath, content] = fileDirective.args;
-  if (typeof relativePath !== "string" || !relativePath) {
-    throw new Error("`file` directive expects a path as its first argument");
-  }
-  if (!(content instanceof HeredocValue)) {
-    throw new Error(`\`file ${relativePath}\` expects a heredoc body`);
-  }
-  const filePath = join(workDir, relativePath);
+const writeCaseFile = async (file: CaseSpec["files"][number], workDir: string): Promise<void> => {
+  if (file.error !== undefined || file.content === undefined) throw new Error(file.error);
+  const filePath = join(workDir, file.path);
   await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(filePath, content.content);
+  await writeFile(filePath, file.content);
 };
 
 type ScriptContext = {
@@ -64,29 +37,28 @@ type ScriptContext = {
   env: Record<string, string>;
 };
 
-// Runs a `run`/`setup`/`teardown` script, given either as a heredoc body or
-// as a path to a file (relative to the .donly file); resolves to an error
-// message, or undefined when the script succeeded.
+// Runs a `run`/`setup`/`teardown` script, given inline or as a path to a
+// file (relative to the spec file); resolves to an error message, or
+// undefined when the script succeeded.
 const runScript = async (
-  directive: Directive,
+  source: ScriptSpec,
   kind: string,
   fileStem: string,
   { baseDir, workDir, runtime, env }: ScriptContext,
 ): Promise<string | undefined> => {
-  const source = directive.args[0];
   let scriptPath: string;
   let ext: string;
 
-  if (source instanceof HeredocValue) {
-    ext = EXT_BY_DELIMITER[source.delimiter?.toLowerCase() ?? ""] ?? "ts";
+  if (source.kind === "inline") {
+    ext = source.ext;
     scriptPath = join(workDir, `${fileStem}.${ext}`);
     if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
       return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
     }
-    await writeFile(scriptPath, source.content);
-  } else if (typeof source === "string" && source) {
+    await writeFile(scriptPath, source.code);
+  } else if (source.kind === "file") {
     // Run in place (not copied) so its own relative imports keep working.
-    scriptPath = resolve(baseDir, source);
+    scriptPath = resolve(baseDir, source.path);
     ext = extname(scriptPath).slice(1).toLowerCase();
     if (!(await Bun.file(scriptPath).exists())) {
       return `${kind} file not found: ${scriptPath}`;
@@ -95,7 +67,7 @@ const runScript = async (
       return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
     }
   } else {
-    return `\`${kind}\` directive expects a heredoc body or a file path`;
+    return source.message;
   }
 
   const proc = Bun.spawn(runtime === "node" ? ["node", scriptPath] : ["bun", "run", scriptPath], {
@@ -110,31 +82,26 @@ const runScript = async (
   return exitCode === 0 ? undefined : stderr.trim() || `exit code ${exitCode}`;
 };
 
-const writeFileDirectives = async (caseDirective: Directive, workDir: string): Promise<void> => {
-  for (const fileDirective of directivesNamed(caseDirective, "file")) {
-    await writeFileDirective(fileDirective, workDir);
-  }
+const writeCaseFiles = async (spec: CaseSpec, workDir: string): Promise<void> => {
+  for (const file of spec.files) await writeCaseFile(file, workDir);
 };
 
 const runCase = async (
-  caseDirective: Directive,
+  spec: CaseSpec,
   index: number,
   baseDir: string,
   workDir: string,
   runtime: Runtime,
 ): Promise<CaseResult> => {
-  const name = caseDirective.args.length
-    ? caseDirective.args.map(argValue).join(" ")
-    : `case ${index + 1}`;
+  const name = spec.name ?? `case ${index + 1}`;
 
   const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  for (const envDirective of directivesNamed(caseDirective, "env")) {
-    const [envName, envValue] = envDirective.args.map(argValue);
+  for (const [envName, envValue] of spec.env) {
     if (!envName) continue;
-    env[envName] = envValue ?? "";
+    env[envName] = envValue;
   }
 
-  const [filesOk, filesError] = await result(writeFileDirectives(caseDirective, workDir));
+  const [filesOk, filesError] = await result(writeCaseFiles(spec, workDir));
   if (!filesOk) {
     return {
       name,
@@ -143,14 +110,14 @@ const runCase = async (
     };
   }
 
-  const runDirective = directivesNamed(caseDirective, "run")[0];
+  const runDirective = spec.run;
   if (!runDirective) {
     return { name, ok: false, error: "case has no `run` directive" };
   }
 
   const context: ScriptContext = { baseDir, workDir, runtime, env };
-  const setups = directivesNamed(caseDirective, "setup");
-  const teardowns = directivesNamed(caseDirective, "teardown");
+  const setups = spec.setups;
+  const teardowns = spec.teardowns;
 
   let error: string | undefined;
   for (const [n, setup] of setups.entries()) {
@@ -194,16 +161,14 @@ export const runDonlyFile = async (
   filePath: string,
   { dependencies = [], runtime = "bun" }: RunOptions = {},
 ): Promise<boolean> => {
-  const text = await Bun.file(filePath).text();
-  const root = DON.parse(text);
-  const topLevel = topLevelDirectives(root);
+  const spec = parseSpec(filePath, await Bun.file(filePath).text());
 
   // Every run gets its own scratch directory: dependencies are installed
   // here and case scripts run from here, so `smoking` never touches the
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
   const [ok, error, allOk] = await result(
-    runInWorkDir({ filePath, topLevel, workDir, dependencies, runtime }),
+    runInWorkDir({ filePath, spec, workDir, dependencies, runtime }),
   );
   await rm(workDir, { recursive: true, force: true });
   if (!ok) throw error;
@@ -212,13 +177,13 @@ export const runDonlyFile = async (
 
 const runInWorkDir = async ({
   filePath,
-  topLevel,
+  spec,
   workDir,
   dependencies,
   runtime,
 }: {
   filePath: string;
-  topLevel: Directive[];
+  spec: Spec;
   workDir: string;
   dependencies: string[];
   runtime: Runtime;
@@ -227,30 +192,21 @@ const runInWorkDir = async ({
     // Without this, node warns on stderr about detecting the module type.
     await writeFile(join(workDir, "package.json"), '{"type":"module"}\n');
   }
-  const fileDependencies = topLevel
-    .filter((d) => d.name === "dependency")
-    .map((d) => d.args.map(argValue).join(""));
-  for (const spec of new Set([...dependencies, ...fileDependencies])) {
-    if (!spec) continue;
-    console.log(`→ installing dependency: ${spec}`);
-    await installDependency(spec, workDir);
+  for (const dep of new Set([...dependencies, ...spec.dependencies])) {
+    if (!dep) continue;
+    console.log(`→ installing dependency: ${dep}`);
+    await installDependency(dep, workDir);
   }
 
-  const cases = topLevel.filter((d) => d.name === "case");
+  const cases = spec.cases;
   if (cases.length === 0) {
     console.log("No `case` blocks found.");
     return true;
   }
 
   let allOk = true;
-  for (const [index, caseDirective] of cases.entries()) {
-    const caseResult = await runCase(
-      caseDirective,
-      index,
-      dirname(resolve(filePath)),
-      workDir,
-      runtime,
-    );
+  for (const [index, caseSpec] of cases.entries()) {
+    const caseResult = await runCase(caseSpec, index, dirname(resolve(filePath)), workDir, runtime);
     allOk = allOk && caseResult.ok;
     if (caseResult.ok) {
       console.log(`✔ ${caseResult.name}`);

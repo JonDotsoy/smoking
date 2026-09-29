@@ -63,6 +63,27 @@ describe("smoking CLI", () => {
     expect(stderr).toMatchSnapshot("stderr");
   });
 
+  test("runs a .yaml file: env, files, setup, teardown and file scripts", () => {
+    const { exitCode, stdout } = runCli("mixed.yaml");
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("setup\nfile = Content\nteardown\n✔ pass");
+    expect(stdout).toContain("✘ fail");
+    expect(stdout).toContain("intentional failure");
+    expect(stdout).toContain("setup.ts ran\n✔ case 3");
+  });
+
+  test("a .yml file is parsed as YAML too", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "smoking-yml-"));
+    const file = join(dir, "cases.yml");
+    await writeFile(file, "cases:\n  - name: ok\n    run: console.log('hi')\n");
+    const { exitCode, stdout } = runCliWithArgs([file]);
+    await rm(dir, { recursive: true, force: true });
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toBe("hi\n✔ ok\n");
+  });
+
   test("--dependency without a value is rejected", () => {
     const { exitCode, stderr } = runCliWithArgs(["--dependency"]);
 
