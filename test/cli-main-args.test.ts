@@ -2,16 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { CliArgsError, CliMainArgs } from "../src/cli-main-args.ts";
+import { result } from "../src/result.ts";
 
 const parse = (...args: string[]) => new CliMainArgs().parse(args);
 
 const errorOf = (...args: string[]): CliArgsError => {
-  try {
-    parse(...args);
-  } catch (error) {
-    return error as CliArgsError;
-  }
-  throw new Error("expected parse() to throw");
+  const [ok, error] = result(() => parse(...args));
+  if (ok) throw new Error("expected parse() to throw");
+  return error as CliArgsError;
 };
 
 describe("CliMainArgs", () => {

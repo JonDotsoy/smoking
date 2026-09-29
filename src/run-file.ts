@@ -2,6 +2,7 @@ import { DON, Directive, HeredocValue, ROOT_DIRECTIVE_NAME } from "donly";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
+import { result } from "./result.ts";
 
 const EXT_BY_DELIMITER: Record<string, string> = {
   ts: "ts",
@@ -109,6 +110,12 @@ const runScript = async (
   return exitCode === 0 ? undefined : stderr.trim() || `exit code ${exitCode}`;
 };
 
+const writeFileDirectives = async (caseDirective: Directive, workDir: string): Promise<void> => {
+  for (const fileDirective of directivesNamed(caseDirective, "file")) {
+    await writeFileDirective(fileDirective, workDir);
+  }
+};
+
 const runCase = async (
   caseDirective: Directive,
   index: number,
@@ -127,12 +134,9 @@ const runCase = async (
     env[envName] = envValue ?? "";
   }
 
-  try {
-    for (const fileDirective of directivesNamed(caseDirective, "file")) {
-      await writeFileDirective(fileDirective, workDir);
-    }
-  } catch (error) {
-    return { name, ok: false, error: error instanceof Error ? error.message : String(error) };
+  const [filesOk, filesError] = await result(writeFileDirectives(caseDirective, workDir));
+  if (!filesOk) {
+    return { name, ok: false, error: filesError instanceof Error ? filesError.message : String(filesError) };
   }
 
   const runDirective = directivesNamed(caseDirective, "run")[0];
@@ -146,9 +150,9 @@ const runCase = async (
 
   let error: string | undefined;
   for (const [n, setup] of setups.entries()) {
-    const result = await runScript(setup, "setup", `case-${index}-setup-${n}`, context);
-    if (result) {
-      error = `setup failed: ${result}`;
+    const setupError = await runScript(setup, "setup", `case-${index}-setup-${n}`, context);
+    if (setupError) {
+      error = `setup failed: ${setupError}`;
       break;
     }
   }
@@ -158,8 +162,8 @@ const runCase = async (
   // Teardowns always run, even when setup or run failed; a failing teardown
   // only fails the case if nothing failed before it.
   for (const [n, teardown] of teardowns.entries()) {
-    const result = await runScript(teardown, "teardown", `case-${index}-teardown-${n}`, context);
-    if (result) error ??= `teardown failed: ${result}`;
+    const teardownError = await runScript(teardown, "teardown", `case-${index}-teardown-${n}`, context);
+    if (teardownError) error ??= `teardown failed: ${teardownError}`;
   }
 
   return error === undefined ? { name, ok: true } : { name, ok: false, error };
@@ -189,40 +193,57 @@ export const runDonlyFile = async (
   // here and case scripts run from here, so `smoking` never touches the
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
-  try {
-    if (runtime === "node") {
-      // Without this, node warns on stderr about detecting the module type.
-      await writeFile(join(workDir, "package.json"), '{"type":"module"}\n');
-    }
-    const fileDependencies = topLevel
-      .filter((d) => d.name === "dependency")
-      .map((d) => d.args.map(argValue).join(""));
-    for (const spec of new Set([...dependencies, ...fileDependencies])) {
-      if (!spec) continue;
-      console.log(`→ installing dependency: ${spec}`);
-      await installDependency(spec, workDir);
-    }
+  const [ok, error, allOk] = await result(
+    runInWorkDir({ filePath, topLevel, workDir, dependencies, runtime }),
+  );
+  await rm(workDir, { recursive: true, force: true });
+  if (!ok) throw error;
+  return allOk;
+};
 
-    const cases = topLevel.filter((d) => d.name === "case");
-    if (cases.length === 0) {
-      console.log("No `case` blocks found.");
-      return true;
-    }
-
-    let allOk = true;
-    for (const [index, caseDirective] of cases.entries()) {
-      const result = await runCase(caseDirective, index, dirname(resolve(filePath)), workDir, runtime);
-      allOk = allOk && result.ok;
-      if (result.ok) {
-        console.log(`✔ ${result.name}`);
-      } else {
-        console.log(`✘ ${result.name}`);
-        if (result.error) console.log(`  ${result.error}`);
-      }
-    }
-
-    return allOk;
-  } finally {
-    await rm(workDir, { recursive: true, force: true });
+const runInWorkDir = async ({
+  filePath,
+  topLevel,
+  workDir,
+  dependencies,
+  runtime,
+}: {
+  filePath: string;
+  topLevel: Directive[];
+  workDir: string;
+  dependencies: string[];
+  runtime: Runtime;
+}): Promise<boolean> => {
+  if (runtime === "node") {
+    // Without this, node warns on stderr about detecting the module type.
+    await writeFile(join(workDir, "package.json"), '{"type":"module"}\n');
   }
+  const fileDependencies = topLevel
+    .filter((d) => d.name === "dependency")
+    .map((d) => d.args.map(argValue).join(""));
+  for (const spec of new Set([...dependencies, ...fileDependencies])) {
+    if (!spec) continue;
+    console.log(`→ installing dependency: ${spec}`);
+    await installDependency(spec, workDir);
+  }
+
+  const cases = topLevel.filter((d) => d.name === "case");
+  if (cases.length === 0) {
+    console.log("No `case` blocks found.");
+    return true;
+  }
+
+  let allOk = true;
+  for (const [index, caseDirective] of cases.entries()) {
+    const caseResult = await runCase(caseDirective, index, dirname(resolve(filePath)), workDir, runtime);
+    allOk = allOk && caseResult.ok;
+    if (caseResult.ok) {
+      console.log(`✔ ${caseResult.name}`);
+    } else {
+      console.log(`✘ ${caseResult.name}`);
+      if (caseResult.error) console.log(`  ${caseResult.error}`);
+    }
+  }
+
+  return allOk;
 };

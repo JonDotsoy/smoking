@@ -19,6 +19,37 @@ Default to using Bun instead of Node.js.
 - Prefer `Bun.file` over `node:fs`'s readFile/writeFile
 - Bun.$`ls` instead of execa.
 
+## Error handling: `result()`
+
+Don't write `try/catch` (or `try/finally`) in `src/`, `bin/` or tests. Use the
+`result()` utility from `src/result.ts`, which returns errors as values:
+
+```ts
+import { result } from "./result.ts";
+
+// Promise (or async function): await it
+const [ok, error, data] = await result(promise);
+const [ok, error, data] = await result(async () => readThing());
+
+// Synchronous function: no await, you get the tuple directly
+const [ok, error, data] = result(() => JSON.parse(text));
+```
+
+- The tuple is `[true, undefined, data]` on success and
+  `[false, error, undefined]` on failure. Check `ok` first; TypeScript narrows
+  `data` and `error` from it.
+- `error` is `unknown`: narrow it (`error instanceof Error`) before reading it.
+- Never rely on `data` being truthy to detect success; `0`, `""` and `false`
+  are valid data. Always check `ok`.
+- `result()` never throws. To propagate, rethrow explicitly: `if (!ok) throw error;`.
+- Cleanup that used to be `finally` runs after the call, then rethrows:
+
+```ts
+const [ok, error, value] = await result(doWork(dir));
+await rm(dir, { recursive: true, force: true });
+if (!ok) throw error;
+```
+
 ## Testing
 
 Use `bun test` to run tests.

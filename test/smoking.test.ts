@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EXAMPLE_DONLY } from "../src/help.ts";
+import { result } from "../src/result.ts";
 
 const CLI_PATH = join(import.meta.dir, "..", "bin", "smoking.ts");
 const FIXTURES_DIR = join(import.meta.dir, "fixtures");
@@ -189,7 +190,7 @@ describe("smoking CLI", () => {
 
   test("the example shown in --help actually passes", async () => {
     const dir = await mkdtemp(join(tmpdir(), "smoking-help-example-"));
-    try {
+    const [ok, error] = await result(async () => {
       const examplePath = join(dir, "example.donly");
       await writeFile(examplePath, EXAMPLE_DONLY);
 
@@ -200,8 +201,8 @@ describe("smoking CLI", () => {
       expect(stdout.replace(/installed hotconfigs@[\d.]+/, "installed hotconfigs@<latest>")).toMatchSnapshot(
         "stdout",
       );
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
+    });
+    await rm(dir, { recursive: true, force: true });
+    if (!ok) throw error;
   });
 });

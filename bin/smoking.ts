@@ -2,12 +2,11 @@
 import { fileURLToPath } from "node:url";
 import { CliArgsError, CliMainArgs } from "../src/cli-main-args.ts";
 import { HELP } from "../src/help.ts";
+import { result } from "../src/result.ts";
 import { runDonlyFile } from "../src/run-file.ts";
 
-let parsed;
-try {
-  parsed = new CliMainArgs().parse(process.argv.slice(2));
-} catch (error) {
+const [parsedOk, error, parsed] = result(() => new CliMainArgs().parse(process.argv.slice(2)));
+if (!parsedOk) {
   if (!(error instanceof CliArgsError)) throw error;
   if (error.kind === "help") {
     console.log(HELP);
@@ -22,6 +21,6 @@ try {
   process.exit(1);
 }
 
-const { dependencies, runtime, file } = parsed;
+const { dependencies, runtime, file } = parsed!;
 const ok = await runDonlyFile(fileURLToPath(file), { dependencies, runtime });
 process.exit(ok ? 0 : 1);
