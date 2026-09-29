@@ -1,0 +1,73 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version bump
+        type: choice
+        default: none
+        options:
+          - none
+          - patch
+          - minor
+          - major
+      tag:
+        description: npm dist-tag
+        type: choice
+        default: latest
+        options:
+          - latest
+          - demo
+          - beta
+          - alpha
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run tests
+        run: bun test
+
+      - name: Bump version
+        if: inputs.version != 'none'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          bun pm version ${{ inputs.version }}
+          git push --follow-tags
+
+      # npm's OIDC "Trusted Publisher" flow (no NPM_TOKEN secret needed) is
+      # only implemented by the npm CLI today, so the publish step itself
+      # runs through npm rather than `bun publish`; everything else above
+      # stays on Bun per this repo's CLAUDE.md. Trusted Publishing must also
+      # be configured for this package on npmjs.com, pointing at this
+      # repo/workflow file.
+      - name: Setup Node for npm OIDC publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Publish
+        run: npm publish --tag ${{ inputs.tag }} --access public --provenance
