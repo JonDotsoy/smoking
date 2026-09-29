@@ -172,6 +172,7 @@ describe("smoking CLI", () => {
 
     const distPkg = await Bun.file(join(REPO_ROOT, "dist", "package.json")).json();
     expect(distPkg.bin).toEqual({ smoking: "smoking.ts" });
+    expect(distPkg.private).toBe(false);
 
     const dist = Bun.spawnSync(["bun", join(REPO_ROOT, "dist", "smoking.ts"), "--help"]);
     expect(dist.exitCode).toBe(0);

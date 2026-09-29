@@ -29,6 +29,7 @@ const distPkg = {
   license: pkg.license,
   author: pkg.author,
   type: pkg.type,
+  private: false,
   dependencies: { donly: pkg.dependencies.donly },
   bin: { smoking: "smoking.ts" },
 };
