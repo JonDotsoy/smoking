@@ -107,7 +107,43 @@ describe("smoking CLI", () => {
     const { exitCode, stderr } = runCliWithArgs(["--dependency"]);
 
     expect(exitCode).toBe(1);
-    expect(stderr.split("\n")[0]).toBe("Option --dependency requires a package name");
+    expect(stderr.split("\n")[0]).toBe("Option --dependency requires a value");
+  });
+
+  test("runs case scripts with bun by default", () => {
+    const { exitCode, stdout } = runCli("runtime.donly");
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toBe("running on bun\n✔ which-runtime\n");
+  });
+
+  test("--runtime node runs case scripts with node", () => {
+    const { exitCode, stdout, stderr } = runCliWithArgs([
+      "--runtime",
+      "node",
+      join(FIXTURES_DIR, "runtime.donly"),
+    ]);
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toBe("running on node\n✔ which-runtime\n");
+    expect(stderr).toBe("");
+  });
+
+  test("--runtime node can use installed dependencies", () => {
+    const { exitCode, stdout } = runCliWithArgs([
+      "--runtime=node",
+      join(FIXTURES_DIR, "dependency.donly"),
+    ]);
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("parsed greeting = hello\n✔ uses-dependency");
+  });
+
+  test("--runtime rejects unsupported runtimes", () => {
+    const { exitCode, stderr } = runCliWithArgs(["--runtime", "deno", "file.donly"]);
+
+    expect(exitCode).toBe(1);
+    expect(stderr.split("\n")[0]).toBe('Invalid --runtime "deno": expected bun or node');
   });
 
   test("--help prints the documented usage and file format", () => {

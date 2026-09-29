@@ -1,0 +1,6 @@
+case which-runtime {
+  run <<<ts
+    const label: string = typeof (process.versions as any).bun === "undefined" ? "node" : "bun"
+    const top = await Promise.resolve(label)
+    console.log("running on", top)
+}

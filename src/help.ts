@@ -43,6 +43,12 @@ OPTIONS
           dependency lodash
           dependency react
 
+  --runtime <bun|node>
+        Executable that runs each case's script (default: bun). With "node",
+        scripts run as "node <script>" in ES module mode; TypeScript ("ts")
+        needs Node 22.18+ (type stripping) and "tsx"/"jsx" are not supported.
+        Dependencies are always installed with Bun, whatever the runtime.
+
   -h, --help
         Show this help message and exit.
 
@@ -108,6 +114,7 @@ ISOLATION
   project you run it from.
 
 REQUIREMENTS
-  Bun must be installed (https://bun.sh). It is used to install the
-  dependencies and to run each script.
+  Bun must be installed (https://bun.sh). It installs the dependencies and,
+  unless --runtime node is given, runs each script. Node 22.18+ is only
+  needed for --runtime node.
 `;

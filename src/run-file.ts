@@ -59,6 +59,7 @@ const runCase = async (
   caseDirective: Directive,
   index: number,
   workDir: string,
+  runtime: Runtime,
 ): Promise<CaseResult> => {
   const name = caseDirective.args.length
     ? caseDirective.args.map(argValue).join(" ")
@@ -88,10 +89,13 @@ const runCase = async (
     return { name, ok: false, error: "`run` directive expects a heredoc body" };
   }
   const ext = EXT_BY_DELIMITER[heredoc.delimiter?.toLowerCase() ?? ""] ?? "ts";
+  if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
+    return { name, ok: false, error: `the node runtime cannot run \`${ext}\` scripts; use --runtime bun` };
+  }
   const scriptPath = join(workDir, `case-${index}.${ext}`);
 
   await writeFile(scriptPath, heredoc.content);
-  const proc = Bun.spawn(["bun", "run", scriptPath], {
+  const proc = Bun.spawn(runtime === "node" ? ["node", scriptPath] : ["bun", "run", scriptPath], {
     cwd: workDir,
     env,
     stdout: "inherit",
@@ -106,7 +110,13 @@ const runCase = async (
   return { name, ok: true };
 };
 
+export type Runtime = "bun" | "node";
+export const RUNTIMES: readonly Runtime[] = ["bun", "node"];
+
 export type RunOptions = {
+  // Executable that runs each case's script. Dependencies are always
+  // installed with Bun.
+  runtime?: Runtime;
   // Extra packages to install, as if `dependency <spec>` lines were added at
   // the top of the file.
   dependencies?: string[];
@@ -114,7 +124,7 @@ export type RunOptions = {
 
 export const runDonlyFile = async (
   filePath: string,
-  { dependencies = [] }: RunOptions = {},
+  { dependencies = [], runtime = "bun" }: RunOptions = {},
 ): Promise<boolean> => {
   const text = await Bun.file(filePath).text();
   const root = DON.parse(text);
@@ -125,6 +135,10 @@ export const runDonlyFile = async (
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
   try {
+    if (runtime === "node") {
+      // Without this, node warns on stderr about detecting the module type.
+      await writeFile(join(workDir, "package.json"), '{"type":"module"}\n');
+    }
     const fileDependencies = topLevel
       .filter((d) => d.name === "dependency")
       .map((d) => d.args.map(argValue).join(""));
@@ -142,7 +156,7 @@ export const runDonlyFile = async (
 
     let allOk = true;
     for (const [index, caseDirective] of cases.entries()) {
-      const result = await runCase(caseDirective, index, workDir);
+      const result = await runCase(caseDirective, index, workDir, runtime);
       allOk = allOk && result.ok;
       if (result.ok) {
         console.log(`✔ ${result.name}`);
