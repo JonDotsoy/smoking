@@ -10,6 +10,9 @@
     "bin",
     "src"
   ],
+  "scripts": {
+    "test": "bun test"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -17,7 +20,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "donly": "^0.0.29",
-    "hotconfigs": "^1.0.8"
+    "donly": "^0.0.29"
   }
 }

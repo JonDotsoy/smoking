@@ -6,7 +6,6 @@
       "name": "init",
       "dependencies": {
         "donly": "^0.0.29",
-        "hotconfigs": "^1.0.8",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -24,8 +23,6 @@
     "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
 
     "donly": ["donly@0.0.29", "", { "bin": { "donly": "bin/donly.js" } }, "sha512-ZwmlCgHMH1W+L7mngZE6dNyI8zZYhuVHJT+pzGdYL6LMMDxe50U+wnoSu/b4V6F8SsW0mq2k0SXnPnzCNd4EGQ=="],
-
-    "hotconfigs": ["hotconfigs@1.0.8", "", { "peerDependencies": { "react": ">=18", "typescript": "^5" }, "optionalPeers": ["react"] }, "sha512-sWDRXj+WF0O7cHWp/mGJbIMy2neYG+hgqkS31KWb7/SIW0ufcW5XHGpZiutOIQ1zw3Nxd+53qKMQWQ3xpAltDw=="],
 
     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
