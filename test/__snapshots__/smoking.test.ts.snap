@@ -41,3 +41,20 @@ exports[`smoking CLI installs a declared \`dependency\` before running the case:
 "Saved lockfile
 "
 `;
+
+exports[`smoking CLI installs a \`dependency\` pinned to a specific version: stdout 1`] = `
+"→ installing dependency: donly@0.0.28
+bun add v1.3.11 (af24e281)
+
+installed donly@0.0.28 with binaries:
+ - donly
+
+parsed greeting = hello
+✔ pinned-version
+"
+`;
+
+exports[`smoking CLI installs a \`dependency\` pinned to a specific version: stderr 1`] = `
+"Saved lockfile
+"
+`;
