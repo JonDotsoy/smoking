@@ -146,6 +146,14 @@ describe("smoking CLI", () => {
     expect(stderr.split("\n")[0]).toBe('Invalid --runtime "deno": expected bun or node');
   });
 
+  test("runs setup before run and teardown after, even when steps fail", () => {
+    const { exitCode, stdout } = runCli("hooks.donly");
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toMatchSnapshot("stdout");
+    expect(stdout).not.toContain("run must not execute");
+  });
+
   test("--help prints the documented usage and file format", () => {
     const { exitCode, stdout, stderr } = runCliWithArgs(["--help"]);
 

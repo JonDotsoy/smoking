@@ -4,6 +4,8 @@ case reads-config-from-env {
   env FOO tar
   file ./greeting.txt <<<txt
     hello
+  setup <<<ts
+    console.log("setup: preparing")
   run <<<ts
     import { readFileSync } from "node:fs"
     import { load, string } from "hotconfigs"
@@ -15,6 +17,8 @@ case reads-config-from-env {
     if (greeting !== "hello") throw new Error("unexpected greeting: " + greeting)
 
     console.log("config and file look good")
+  teardown <<<ts
+    console.log("teardown: cleaning up")
 }
 `;
 
@@ -83,11 +87,24 @@ FILE FORMAT
         The heredoc body (the indented lines below it) is the file content.
         Repeatable.
 
+    setup <<<lang
+        Optional script that runs before "run", after the "file" directives.
+        If it fails, "run" is skipped and the case fails. Repeatable; setups
+        run in order.
+
+    teardown <<<lang
+        Optional script that runs after "run" and always runs, even when
+        "setup" or "run" failed, so it can clean up. If it fails the case
+        fails too (unless it had already failed). Repeatable; teardowns run in
+        order.
+
     run <<<lang
         The script to execute. The heredoc delimiter picks the language:
-        ts (default), tsx, js, jsx or mjs. The script runs with its working
-        directory set to the same folder the "file" directives write to, so
-        relative paths like "./greeting.txt" just work. Required.
+        ts (default), tsx, js, jsx or mjs (same for setup and teardown). The
+        script runs with its working directory set to the same folder the
+        "file" directives write to, so relative paths like "./greeting.txt"
+        just work. Required. Setup, run and teardown are separate processes:
+        share state through files or "env".
 
   Heredocs start with "<<<" followed by a label and continue with the
   indented lines below; the indentation is stripped from the content.

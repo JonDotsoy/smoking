@@ -55,6 +55,43 @@ const writeFileDirective = async (fileDirective: Directive, workDir: string): Pr
   await writeFile(filePath, content.content);
 };
 
+type ScriptContext = {
+  workDir: string;
+  runtime: Runtime;
+  env: Record<string, string>;
+};
+
+// Runs a `run`/`setup`/`teardown` heredoc as a script; resolves to an error
+// message, or undefined when the script succeeded.
+const runScript = async (
+  directive: Directive,
+  kind: string,
+  fileStem: string,
+  { workDir, runtime, env }: ScriptContext,
+): Promise<string | undefined> => {
+  const heredoc = directive.args[0];
+  if (!(heredoc instanceof HeredocValue)) {
+    return `\`${kind}\` directive expects a heredoc body`;
+  }
+  const ext = EXT_BY_DELIMITER[heredoc.delimiter?.toLowerCase() ?? ""] ?? "ts";
+  if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
+    return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
+  }
+  const scriptPath = join(workDir, `${fileStem}.${ext}`);
+
+  await writeFile(scriptPath, heredoc.content);
+  const proc = Bun.spawn(runtime === "node" ? ["node", scriptPath] : ["bun", "run", scriptPath], {
+    cwd: workDir,
+    env,
+    stdout: "inherit",
+    stderr: "pipe",
+  });
+  const stderr = await new Response(proc.stderr).text();
+  const exitCode = await proc.exited;
+  if (stderr) process.stderr.write(stderr);
+  return exitCode === 0 ? undefined : stderr.trim() || `exit code ${exitCode}`;
+};
+
 const runCase = async (
   caseDirective: Directive,
   index: number,
@@ -84,30 +121,30 @@ const runCase = async (
   if (!runDirective) {
     return { name, ok: false, error: "case has no `run` directive" };
   }
-  const heredoc = runDirective.args[0];
-  if (!(heredoc instanceof HeredocValue)) {
-    return { name, ok: false, error: "`run` directive expects a heredoc body" };
-  }
-  const ext = EXT_BY_DELIMITER[heredoc.delimiter?.toLowerCase() ?? ""] ?? "ts";
-  if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
-    return { name, ok: false, error: `the node runtime cannot run \`${ext}\` scripts; use --runtime bun` };
-  }
-  const scriptPath = join(workDir, `case-${index}.${ext}`);
 
-  await writeFile(scriptPath, heredoc.content);
-  const proc = Bun.spawn(runtime === "node" ? ["node", scriptPath] : ["bun", "run", scriptPath], {
-    cwd: workDir,
-    env,
-    stdout: "inherit",
-    stderr: "pipe",
-  });
-  const stderr = await new Response(proc.stderr).text();
-  const exitCode = await proc.exited;
-  if (stderr) process.stderr.write(stderr);
-  if (exitCode !== 0) {
-    return { name, ok: false, error: stderr.trim() || `exit code ${exitCode}` };
+  const context: ScriptContext = { workDir, runtime, env };
+  const setups = directivesNamed(caseDirective, "setup");
+  const teardowns = directivesNamed(caseDirective, "teardown");
+
+  let error: string | undefined;
+  for (const [n, setup] of setups.entries()) {
+    const result = await runScript(setup, "setup", `case-${index}-setup-${n}`, context);
+    if (result) {
+      error = `setup failed: ${result}`;
+      break;
+    }
   }
-  return { name, ok: true };
+  if (!error) {
+    error = await runScript(runDirective, "run", `case-${index}`, context);
+  }
+  // Teardowns always run, even when setup or run failed; a failing teardown
+  // only fails the case if nothing failed before it.
+  for (const [n, teardown] of teardowns.entries()) {
+    const result = await runScript(teardown, "teardown", `case-${index}-teardown-${n}`, context);
+    if (result) error ??= `teardown failed: ${result}`;
+  }
+
+  return error === undefined ? { name, ok: true } : { name, ok: false, error };
 };
 
 export type Runtime = "bun" | "node";
