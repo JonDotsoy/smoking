@@ -8,7 +8,6 @@ exports[`smoking CLI runs a mix of passing and failing cases: stdout 1`] = `
               ^
 error: intentional failure
       at /tmp/smoking-run-<random>/case-1.ts:1:11
-      at loadAndEvaluateModule (2:1)
 
 Bun v<version> (<platform>)
 "
@@ -19,7 +18,6 @@ exports[`smoking CLI runs a mix of passing and failing cases: stderr 1`] = `
               ^
 error: intentional failure
       at /tmp/smoking-run-<random>/case-1.ts:1:11
-      at loadAndEvaluateModule (2:1)
 
 Bun v<version> (<platform>)
 "
@@ -27,7 +25,7 @@ Bun v<version> (<platform>)
 
 exports[`smoking CLI installs a declared \`dependency\` before running the case: stdout 1`] = `
 "→ installing dependency: donly
-bun add v1.3.11 (af24e281)
+bun add v<version> (<hash>)
 
 installed donly@0.0.29 with binaries:
  - donly
@@ -44,7 +42,7 @@ exports[`smoking CLI installs a declared \`dependency\` before running the case:
 
 exports[`smoking CLI installs a \`dependency\` pinned to a specific version: stdout 1`] = `
 "→ installing dependency: donly@0.0.28
-bun add v1.3.11 (af24e281)
+bun add v<version> (<hash>)
 
 installed donly@0.0.28 with binaries:
  - donly
@@ -61,7 +59,7 @@ exports[`smoking CLI installs a \`dependency\` pinned to a specific version: std
 
 exports[`smoking CLI installs hotconfigs and reads an env-backed config in the case script: stdout 1`] = `
 "→ installing dependency: hotconfigs
-bun add v1.3.11 (af24e281)
+bun add v<version> (<hash>)
 
 installed hotconfigs@1.0.8
 
