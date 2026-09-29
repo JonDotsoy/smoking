@@ -1,5 +1,7 @@
 name: Publish
 
+run-name: Publish (version=${{ inputs.version }}, tag=${{ inputs.tag }}, provenance=${{ inputs.provenance }})
+
 on:
   workflow_dispatch:
     inputs:
