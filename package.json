@@ -1,6 +1,10 @@
 {
   "name": "smoking",
   "version": "0.0.4",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonDotsoy/smoking.git"
+  },
   "type": "module",
   "private": false,
   "bin": {
