@@ -1,7 +1,7 @@
-import { DON, Directive, HeredocValue } from "donly";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { DON, Directive, HeredocValue, ROOT_DIRECTIVE_NAME } from "donly";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const EXT_BY_DELIMITER: Record<string, string> = {
   ts: "ts",
@@ -16,6 +16,13 @@ const argValue = (arg: Directive["args"][number]): string =>
 
 const directivesNamed = (directive: Directive, name: string): Directive[] =>
   directive.children.filter((child) => child.name === name);
+
+// `DON.parse()` collapses a file with a single top-level directive into
+// that directive itself, instead of wrapping it in a synthetic root — so a
+// `.donly` file with just one `case` and no `dependency` has that `case` as
+// `root` directly, not as a child of it.
+const topLevelDirectives = (root: Directive): Directive[] =>
+  root.name === ROOT_DIRECTIVE_NAME ? root.children : [root];
 
 type CaseResult = {
   name: string;
@@ -35,6 +42,19 @@ const installDependency = async (spec: string, cwd: string): Promise<void> => {
   }
 };
 
+const writeFileDirective = async (fileDirective: Directive, workDir: string): Promise<void> => {
+  const [relativePath, content] = fileDirective.args;
+  if (typeof relativePath !== "string" || !relativePath) {
+    throw new Error("`file` directive expects a path as its first argument");
+  }
+  if (!(content instanceof HeredocValue)) {
+    throw new Error(`\`file ${relativePath}\` expects a heredoc body`);
+  }
+  const filePath = join(workDir, relativePath);
+  await mkdir(dirname(filePath), { recursive: true });
+  await writeFile(filePath, content.content);
+};
+
 const runCase = async (
   caseDirective: Directive,
   index: number,
@@ -49,6 +69,14 @@ const runCase = async (
     const [envName, envValue] = envDirective.args.map(argValue);
     if (!envName) continue;
     env[envName] = envValue ?? "";
+  }
+
+  try {
+    for (const fileDirective of directivesNamed(caseDirective, "file")) {
+      await writeFileDirective(fileDirective, workDir);
+    }
+  } catch (error) {
+    return { name, ok: false, error: error instanceof Error ? error.message : String(error) };
   }
 
   const runDirective = directivesNamed(caseDirective, "run")[0];
@@ -81,20 +109,21 @@ const runCase = async (
 export const runDonlyFile = async (filePath: string): Promise<boolean> => {
   const text = await Bun.file(filePath).text();
   const root = DON.parse(text);
+  const topLevel = topLevelDirectives(root);
 
   // Every run gets its own scratch directory: dependencies are installed
   // here and case scripts run from here, so `smoking` never touches the
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
   try {
-    for (const dependencyDirective of directivesNamed(root, "dependency")) {
+    for (const dependencyDirective of topLevel.filter((d) => d.name === "dependency")) {
       const spec = dependencyDirective.args.map(argValue).join("");
       if (!spec) continue;
       console.log(`→ installing dependency: ${spec}`);
       await installDependency(spec, workDir);
     }
 
-    const cases = directivesNamed(root, "case");
+    const cases = topLevel.filter((d) => d.name === "case");
     if (cases.length === 0) {
       console.log("No `case` blocks found.");
       return true;

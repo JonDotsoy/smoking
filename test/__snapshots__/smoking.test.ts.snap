@@ -74,3 +74,11 @@ exports[`smoking CLI installs hotconfigs and reads an env-backed config in the c
 "Saved lockfile
 "
 `;
+
+exports[`smoking CLI writes a \`file\` directive's content before running the case: stdout 1`] = `
+"file content = Content
+✔ did
+"
+`;
+
+exports[`smoking CLI writes a \`file\` directive's content before running the case: stderr 1`] = `""`;

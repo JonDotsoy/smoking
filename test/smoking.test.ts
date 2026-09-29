@@ -68,4 +68,12 @@ describe("smoking CLI", () => {
     expect(stdout).toMatchSnapshot("stdout");
     expect(stderr).toMatchSnapshot("stderr");
   });
+
+  test("writes a `file` directive's content before running the case", () => {
+    const { exitCode, stdout, stderr } = runCli("file-directive.donly");
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatchSnapshot("stdout");
+    expect(stderr).toMatchSnapshot("stderr");
+  });
 });

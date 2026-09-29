@@ -28,6 +28,9 @@ case {
   A version can be pinned, e.g. `dependency donly@0.0.28`.
 - `case { ... }` — one test case; a file may declare several.
 - `env NAME VALUE` — sets an environment variable for that case's script.
+- `file <path> <<<ext ... }` — writes a file (relative to the case's scratch
+  directory) before running the script, e.g. `file ./file.txt <<<txt`. A case
+  may declare several.
 - `run <<<ts ... }` — the script body, run with `bun run` in a temp file
   (the heredoc delimiter picks the extension: `ts`, `js`, `tsx`, `jsx`, `mjs`).
 
