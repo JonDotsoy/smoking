@@ -28,11 +28,23 @@ const indent = (text: string, spaces: number): string =>
 export const HELP = `smoking - run test cases described in .donly files
 
 USAGE
-  bunx @jondotsoy/smoking <file.donly>
-  npx  @jondotsoy/smoking <file.donly>
+  bunx @jondotsoy/smoking [options] <file.donly>
+  npx  @jondotsoy/smoking [options] <file.donly>
 
 OPTIONS
-  -h, --help    Show this help message and exit.
+  --dependency <package>[@version]
+        Install an extra npm package, exactly as if the file started with a
+        "dependency <package>" line. Repeatable:
+
+          bunx @jondotsoy/smoking --dependency lodash --dependency react file.donly
+
+        is the same as putting these lines at the top of file.donly:
+
+          dependency lodash
+          dependency react
+
+  -h, --help
+        Show this help message and exit.
 
 DESCRIPTION
   A .donly file (DON, "Directive Object Notation") declares the npm packages a

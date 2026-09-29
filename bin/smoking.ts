@@ -2,6 +2,12 @@
 import { HELP } from "../src/help.ts";
 import { runDonlyFile } from "../src/run-file.ts";
 
+const fail = (message: string): never => {
+  console.error(`${message}\n`);
+  console.error(HELP);
+  process.exit(1);
+};
+
 const args = process.argv.slice(2);
 
 if (args.includes("-h") || args.includes("--help")) {
@@ -9,18 +15,27 @@ if (args.includes("-h") || args.includes("--help")) {
   process.exit(0);
 }
 
-const unknownOption = args.find((arg) => arg.startsWith("-"));
-if (unknownOption) {
-  console.error(`Unknown option: ${unknownOption}\n`);
-  console.error(HELP);
-  process.exit(1);
+const dependencies: string[] = [];
+const positional: string[] = [];
+
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i]!;
+  if (arg === "--dependency" || arg.startsWith("--dependency=")) {
+    const value = arg.includes("=") ? arg.slice(arg.indexOf("=") + 1) : args[++i];
+    if (!value || value.startsWith("-")) fail("Option --dependency requires a package name");
+    dependencies.push(value!);
+  } else if (arg.startsWith("-")) {
+    fail(`Unknown option: ${arg}`);
+  } else {
+    positional.push(arg);
+  }
 }
 
-const filePath = args[0];
+const filePath = positional[0];
 if (!filePath) {
   console.log(HELP);
   process.exit(1);
 }
 
-const ok = await runDonlyFile(filePath);
+const ok = await runDonlyFile(filePath, { dependencies });
 process.exit(ok ? 0 : 1);

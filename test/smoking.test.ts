@@ -90,6 +90,26 @@ describe("smoking CLI", () => {
     expect(stderr).toMatchSnapshot("stderr");
   });
 
+  test("--dependency installs extra packages as if declared in the file", () => {
+    const { exitCode, stdout, stderr } = runCliWithArgs([
+      "--dependency",
+      "lodash@4.17.21",
+      "--dependency=donly@0.0.29",
+      join(FIXTURES_DIR, "dependency-flag.donly"),
+    ]);
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatchSnapshot("stdout");
+    expect(stderr).toMatchSnapshot("stderr");
+  });
+
+  test("--dependency without a value is rejected", () => {
+    const { exitCode, stderr } = runCliWithArgs(["--dependency"]);
+
+    expect(exitCode).toBe(1);
+    expect(stderr.split("\n")[0]).toBe("Option --dependency requires a package name");
+  });
+
   test("--help prints the documented usage and file format", () => {
     const { exitCode, stdout, stderr } = runCliWithArgs(["--help"]);
 

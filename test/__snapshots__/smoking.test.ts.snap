@@ -81,15 +81,51 @@ exports[`smoking CLI writes a \`file\` directive's content before running the ca
 
 exports[`smoking CLI writes a \`file\` directive's content before running the case: stderr 1`] = `""`;
 
+exports[`smoking CLI --dependency installs extra packages as if declared in the file: stdout 1`] = `
+"→ installing dependency: lodash@4.17.21
+bun add v<version> (<hash>)
+
+installed lodash@4.17.21
+
+→ installing dependency: donly@0.0.29
+bun add v<version> (<hash>)
+
+installed donly@0.0.29 with binaries:
+ - donly
+
+chunks = 2
+parsed = hello
+✔ uses-flag-dependencies
+"
+`;
+
+exports[`smoking CLI --dependency installs extra packages as if declared in the file: stderr 1`] = `
+"Saved lockfile
+Saved lockfile
+"
+`;
+
 exports[`smoking CLI --help prints the documented usage and file format: stdout 1`] = `
 "smoking - run test cases described in .donly files
 
 USAGE
-  bunx @jondotsoy/smoking <file.donly>
-  npx  @jondotsoy/smoking <file.donly>
+  bunx @jondotsoy/smoking [options] <file.donly>
+  npx  @jondotsoy/smoking [options] <file.donly>
 
 OPTIONS
-  -h, --help    Show this help message and exit.
+  --dependency <package>[@version]
+        Install an extra npm package, exactly as if the file started with a
+        "dependency <package>" line. Repeatable:
+
+          bunx @jondotsoy/smoking --dependency lodash --dependency react file.donly
+
+        is the same as putting these lines at the top of file.donly:
+
+          dependency lodash
+          dependency react
+
+  -h, --help
+        Show this help message and exit.
 
 DESCRIPTION
   A .donly file (DON, "Directive Object Notation") declares the npm packages a
@@ -182,11 +218,23 @@ exports[`smoking CLI rejects unknown options: stderr 1`] = `
 smoking - run test cases described in .donly files
 
 USAGE
-  bunx @jondotsoy/smoking <file.donly>
-  npx  @jondotsoy/smoking <file.donly>
+  bunx @jondotsoy/smoking [options] <file.donly>
+  npx  @jondotsoy/smoking [options] <file.donly>
 
 OPTIONS
-  -h, --help    Show this help message and exit.
+  --dependency <package>[@version]
+        Install an extra npm package, exactly as if the file started with a
+        "dependency <package>" line. Repeatable:
+
+          bunx @jondotsoy/smoking --dependency lodash --dependency react file.donly
+
+        is the same as putting these lines at the top of file.donly:
+
+          dependency lodash
+          dependency react
+
+  -h, --help
+        Show this help message and exit.
 
 DESCRIPTION
   A .donly file (DON, "Directive Object Notation") declares the npm packages a

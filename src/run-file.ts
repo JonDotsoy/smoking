@@ -106,7 +106,16 @@ const runCase = async (
   return { name, ok: true };
 };
 
-export const runDonlyFile = async (filePath: string): Promise<boolean> => {
+export type RunOptions = {
+  // Extra packages to install, as if `dependency <spec>` lines were added at
+  // the top of the file.
+  dependencies?: string[];
+};
+
+export const runDonlyFile = async (
+  filePath: string,
+  { dependencies = [] }: RunOptions = {},
+): Promise<boolean> => {
   const text = await Bun.file(filePath).text();
   const root = DON.parse(text);
   const topLevel = topLevelDirectives(root);
@@ -116,8 +125,10 @@ export const runDonlyFile = async (filePath: string): Promise<boolean> => {
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
   try {
-    for (const dependencyDirective of topLevel.filter((d) => d.name === "dependency")) {
-      const spec = dependencyDirective.args.map(argValue).join("");
+    const fileDependencies = topLevel
+      .filter((d) => d.name === "dependency")
+      .map((d) => d.args.map(argValue).join(""));
+    for (const spec of new Set([...dependencies, ...fileDependencies])) {
       if (!spec) continue;
       console.log(`→ installing dependency: ${spec}`);
       await installDependency(spec, workDir);
