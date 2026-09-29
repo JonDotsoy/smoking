@@ -1,0 +1,9 @@
+dependency donly
+
+case uses-dependency {
+  run <<<ts
+    import { DON } from "donly"
+    const root = DON.parse("greeting hello")
+    if (root.at("/greeting[1]") !== "hello") throw new Error("unexpected parse result")
+    console.log("parsed greeting =", root.at("/greeting[1]"))
+}

@@ -24,3 +24,20 @@ error: intentional failure
 Bun v<version> (<platform>)
 "
 `;
+
+exports[`smoking CLI installs a declared \`dependency\` before running the case: stdout 1`] = `
+"→ installing dependency: donly
+bun add v1.3.11 (af24e281)
+
+installed donly@0.0.29 with binaries:
+ - donly
+
+parsed greeting = hello
+✔ uses-dependency
+"
+`;
+
+exports[`smoking CLI installs a declared \`dependency\` before running the case: stderr 1`] = `
+"Saved lockfile
+"
+`;
