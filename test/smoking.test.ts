@@ -137,6 +137,14 @@ describe("smoking CLI", () => {
     expect(dist.stdout.toString()).toBe(runCliWithArgs(["--help"]).stdout + "");
   });
 
+  test("the README and examples/basic.donly show the same example as --help", async () => {
+    const readme = await Bun.file(join(REPO_ROOT, "README.md")).text();
+    const example = await Bun.file(join(REPO_ROOT, "examples", "basic.donly")).text();
+
+    expect(example).toBe(EXAMPLE_DONLY);
+    expect(readme).toContain(EXAMPLE_DONLY);
+  });
+
   test("--help prints the documented usage and file format", () => {
     const { exitCode, stdout, stderr } = runCliWithArgs(["--help"]);
 
