@@ -110,6 +110,12 @@ FILE FORMAT
         just work. Required. Setup, run and teardown are separate processes:
         share state through files or "env".
 
+  YAML: a file ending in .yaml or .yml describes the same thing as a mapping
+  with "dependencies" (list of packages) and "cases" (list). Each case takes
+  "name", "env" (mapping), "files" (path -> content), "setup" / "teardown"
+  (one script or a list) and "run". A script is a string (inline TypeScript),
+  "{ file: <path> }" or "{ code: <source>, lang: ts|tsx|js|jsx|mjs }".
+
   Files referenced by "setup <path>" / "teardown <path>" run in place, so their
   own relative imports work, and with Bun they can import the packages you
   declared. With "--runtime node" they resolve packages from their own folder.
