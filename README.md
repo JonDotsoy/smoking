@@ -7,7 +7,7 @@ and `case` blocks (each with `env` vars and a `run` heredoc script), and
 ## Usage
 
 ```
-npx smoking file.donly
+npx @jondotsoy/smoking file.donly
 ```
 
 ## `.donly` file format
