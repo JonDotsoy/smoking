@@ -39,6 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - name: Setup Bun
@@ -56,7 +57,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           bun pm version ${{ inputs.version }}
-          git push --follow-tags
+          git push origin HEAD:${{ github.ref_name }} --follow-tags
 
       # npm's OIDC "Trusted Publisher" flow (no NPM_TOKEN secret needed) is
       # only implemented by the npm CLI today, so the publish step itself
