@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "check": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest"

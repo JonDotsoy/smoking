@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, test } from "bun:test";
 import { result } from "../../src/utils/result.ts";
 
 // `expectTypeOf` only exists at the type level: these checks are enforced by
-// `bun run typecheck` (tsc). `bun test` still runs the runtime assertions.
+// `bun run check` (tsc). `bun test` still runs the runtime assertions.
 describe("result() types", () => {
   test("a function returning a value: data is string | undefined until `ok` is checked", async () => {
     const [ok, error, data] = await result(() => "ok");

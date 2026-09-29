@@ -52,9 +52,9 @@ if (!ok) throw error;
 
 ## Testing
 
-Use `bun test` to run tests, and `bun run typecheck` (`tsc --noEmit`) to check
+Use `bun test` to run tests, and `bun run check` (`tsc --noEmit`) to check
 types. Type-level tests use `expectTypeOf` from `bun:test` (see
-`test/utils/result.types.test.ts`); they are only enforced by `typecheck`, not
+`test/utils/result.types.test.ts`); they are only enforced by `check`, not
 by `bun test`.
 
 ```ts#index.test.ts
