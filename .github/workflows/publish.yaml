@@ -80,3 +80,21 @@ jobs:
 
       - name: Publish
         run: npm publish --tag ${{ inputs.tag }} --access public ${{ inputs.provenance && '--provenance' || '' }}
+
+      - name: Summary
+        if: always()
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          {
+            echo "## Publish"
+            echo ""
+            echo "| Input | Value |"
+            echo "| --- | --- |"
+            echo "| Version bump | \`${{ inputs.version }}\` |"
+            echo "| Tag | \`${{ inputs.tag }}\` |"
+            echo "| Provenance | \`${{ inputs.provenance }}\` |"
+            echo ""
+            echo "**Version:** \`$VERSION\`"
+            echo ""
+            echo "**Result:** \`${{ job.status }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
