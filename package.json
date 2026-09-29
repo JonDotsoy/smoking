@@ -4,7 +4,7 @@
   "type": "module",
   "private": false,
   "bin": {
-    "smoking": "./bin/smoking.ts"
+    "smoking": "bin/smoking.ts"
   },
   "files": [
     "bin",
