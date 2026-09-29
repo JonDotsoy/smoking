@@ -1,0 +1,23 @@
+{
+  "name": "smoking",
+  "version": "0.1.0",
+  "type": "module",
+  "private": false,
+  "bin": {
+    "smoking": "./bin/smoking.ts"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "donly": "^0.0.29",
+    "hotconfigs": "^1.0.8"
+  }
+}

@@ -1,0 +1,9 @@
+dependency hotconfigs
+
+case {
+  env FOO tar
+  run <<<ts
+    import { create, string } from "hotconfigs"
+    if (process.env.FOO !== "tar") throw new Error("env FOO not injected")
+    console.log("FOO =", process.env.FOO)
+}
