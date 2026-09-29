@@ -166,6 +166,18 @@ describe("smoking CLI", () => {
     expect(stdout).not.toContain("run must not execute");
   });
 
+  test("the built dist/ CLI behaves like the source CLI", async () => {
+    const build = Bun.spawnSync(["bun", "run", "build"], { cwd: REPO_ROOT });
+    expect(build.exitCode).toBe(0);
+
+    const distPkg = await Bun.file(join(REPO_ROOT, "dist", "package.json")).json();
+    expect(distPkg.bin).toEqual({ smoking: "smoking.ts" });
+
+    const dist = Bun.spawnSync(["bun", join(REPO_ROOT, "dist", "smoking.ts"), "--help"]);
+    expect(dist.exitCode).toBe(0);
+    expect(dist.stdout.toString()).toBe(runCliWithArgs(["--help"]).stdout + "");
+  });
+
   test("--help prints the documented usage and file format", () => {
     const { exitCode, stdout, stderr } = runCliWithArgs(["--help"]);
 

@@ -53,7 +53,9 @@ if (!ok) throw error;
 
 Use `bun test` to run tests. `bun run check` validates the code (`tsc --noEmit`
 and `prettier --check .`) and `bun run fmt` formats it (`prettier --write .`);
-run `bun run fmt` before committing. Type-level tests use `expectTypeOf` from `bun:test` (see
+run `bun run fmt` before committing. `bun run build` bundles the CLI into
+`dist/` (`smoking.ts` + a generated `package.json`); `dist/` is what gets
+published (`npm publish dist/`), never the repo root. Type-level tests use `expectTypeOf` from `bun:test` (see
 `test/utils/result.types.test.ts`); they are only enforced by `check`, not
 by `bun test`.
 

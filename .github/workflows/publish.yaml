@@ -64,6 +64,10 @@ jobs:
           bun pm version ${{ inputs.version }}
           git push origin HEAD:${{ github.ref_name }} --follow-tags
 
+      # After the bump, so dist/package.json gets the new version.
+      - name: Build
+        run: bun run build
+
       # npm's OIDC "Trusted Publisher" flow (no NPM_TOKEN secret needed) is
       # only implemented by the npm CLI today, so the publish step itself
       # runs through npm rather than `bun publish`; everything else above
@@ -82,7 +86,7 @@ jobs:
         run: npm install -g npm@latest
 
       - name: Publish
-        run: npm publish --tag ${{ inputs.tag }} --access public ${{ inputs.provenance && '--provenance' || '' }}
+        run: npm publish dist/ --tag ${{ inputs.tag }} --access public ${{ inputs.provenance && '--provenance' || '' }}
 
       - name: Summary
         if: always()
