@@ -25,10 +25,15 @@ case {
 ```
 
 - `dependency <package>` — installed (via `bun add`) before running any case.
+  A version can be pinned, e.g. `dependency donly@0.0.28`.
 - `case { ... }` — one test case; a file may declare several.
 - `env NAME VALUE` — sets an environment variable for that case's script.
 - `run <<<ts ... }` — the script body, run with `bun run` in a temp file
   (the heredoc delimiter picks the extension: `ts`, `js`, `tsx`, `jsx`, `mjs`).
+
+Each run of `smoking` creates its own scratch temp directory: declared
+dependencies are installed there and case scripts run from there, so a
+`.donly` file's dependencies never touch the project you run `smoking` from.
 
 For each case, `smoking` prints `✔ <case>` on success or `✘ <case>` with the
 error on failure, and exits non-zero if any case failed.

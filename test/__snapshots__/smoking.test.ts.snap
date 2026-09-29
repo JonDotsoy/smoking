@@ -7,7 +7,7 @@ exports[`smoking CLI runs a mix of passing and failing cases: stdout 1`] = `
   1 | throw new Error("intentional failure")
               ^
 error: intentional failure
-      at /tmp/smoking-<random>/run.ts:1:11
+      at /tmp/smoking-run-<random>/case-1.ts:1:11
       at loadAndEvaluateModule (2:1)
 
 Bun v<version> (<platform>)
@@ -18,7 +18,7 @@ exports[`smoking CLI runs a mix of passing and failing cases: stderr 1`] = `
 "1 | throw new Error("intentional failure")
               ^
 error: intentional failure
-      at /tmp/smoking-<random>/run.ts:1:11
+      at /tmp/smoking-run-<random>/case-1.ts:1:11
       at loadAndEvaluateModule (2:1)
 
 Bun v<version> (<platform>)
