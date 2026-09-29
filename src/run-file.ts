@@ -136,7 +136,11 @@ const runCase = async (
 
   const [filesOk, filesError] = await result(writeFileDirectives(caseDirective, workDir));
   if (!filesOk) {
-    return { name, ok: false, error: filesError instanceof Error ? filesError.message : String(filesError) };
+    return {
+      name,
+      ok: false,
+      error: filesError instanceof Error ? filesError.message : String(filesError),
+    };
   }
 
   const runDirective = directivesNamed(caseDirective, "run")[0];
@@ -162,7 +166,12 @@ const runCase = async (
   // Teardowns always run, even when setup or run failed; a failing teardown
   // only fails the case if nothing failed before it.
   for (const [n, teardown] of teardowns.entries()) {
-    const teardownError = await runScript(teardown, "teardown", `case-${index}-teardown-${n}`, context);
+    const teardownError = await runScript(
+      teardown,
+      "teardown",
+      `case-${index}-teardown-${n}`,
+      context,
+    );
     if (teardownError) error ??= `teardown failed: ${teardownError}`;
   }
 
@@ -235,7 +244,13 @@ const runInWorkDir = async ({
 
   let allOk = true;
   for (const [index, caseDirective] of cases.entries()) {
-    const caseResult = await runCase(caseDirective, index, dirname(resolve(filePath)), workDir, runtime);
+    const caseResult = await runCase(
+      caseDirective,
+      index,
+      dirname(resolve(filePath)),
+      workDir,
+      runtime,
+    );
     allOk = allOk && caseResult.ok;
     if (caseResult.ok) {
       console.log(`✔ ${caseResult.name}`);

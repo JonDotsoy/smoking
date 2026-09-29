@@ -1,6 +1,5 @@
 export type Result<T> =
-  | [ok: true, error: undefined, data: T]
-  | [ok: false, error: unknown, data: undefined];
+  [ok: true, error: undefined, data: T] | [ok: false, error: unknown, data: undefined];
 
 // Errors-as-values instead of try/catch:
 //   const [ok, error, data] = await result(promise)

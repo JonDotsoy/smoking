@@ -1,4 +1,3 @@
-
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
@@ -52,8 +51,9 @@ if (!ok) throw error;
 
 ## Testing
 
-Use `bun test` to run tests, and `bun run check` (`tsc --noEmit`) to check
-types. Type-level tests use `expectTypeOf` from `bun:test` (see
+Use `bun test` to run tests. `bun run check` validates the code (`tsc --noEmit`
+and `prettier --check .`) and `bun run fmt` formats it (`prettier --write .`);
+run `bun run fmt` before committing. Type-level tests use `expectTypeOf` from `bun:test` (see
 `test/utils/result.types.test.ts`); they are only enforced by `check`, not
 by `bun test`.
 

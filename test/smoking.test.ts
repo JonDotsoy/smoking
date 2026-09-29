@@ -198,9 +198,9 @@ describe("smoking CLI", () => {
 
       expect(exitCode).toBe(0);
       // The example installs the latest hotconfigs, so mask its version.
-      expect(stdout.replace(/installed hotconfigs@[\d.]+/, "installed hotconfigs@<latest>")).toMatchSnapshot(
-        "stdout",
-      );
+      expect(
+        stdout.replace(/installed hotconfigs@[\d.]+/, "installed hotconfigs@<latest>"),
+      ).toMatchSnapshot("stdout");
     });
     await rm(dir, { recursive: true, force: true });
     if (!ok) throw error;
