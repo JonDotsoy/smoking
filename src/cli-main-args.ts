@@ -1,0 +1,82 @@
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { RUNTIMES, type Runtime } from "./run-file.ts";
+
+export type CliMainArgsResult = {
+  dependencies: string[];
+  runtime: Runtime;
+  file: URL;
+};
+
+// `help`: --help/-h was given. `missing-file`: no .donly file was given.
+// `invalid`: a bad or unknown option (the message says which).
+export class CliArgsError extends Error {
+  constructor(
+    message: string,
+    readonly kind: "help" | "missing-file" | "invalid",
+  ) {
+    super(message);
+    this.name = "CliArgsError";
+  }
+}
+
+export class CliMainArgs {
+  parse(args: string[]): CliMainArgsResult {
+    if (args.includes("-h") || args.includes("--help")) {
+      throw new CliArgsError("help requested", "help");
+    }
+
+    const dependencies: string[] = [];
+    const positional: string[] = [];
+    let runtime: Runtime = "bun";
+
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i]!;
+      const [name, inlineValue] = this.splitOption(arg);
+      const value = () => this.optionValue(name, inlineValue, () => args[++i]);
+
+      if (name === "--dependency") {
+        dependencies.push(value());
+      } else if (name === "--runtime") {
+        runtime = this.parseRuntime(value());
+      } else if (arg.startsWith("-")) {
+        throw new CliArgsError(`Unknown option: ${arg}`, "invalid");
+      } else {
+        positional.push(arg);
+      }
+    }
+
+    const file = positional[0];
+    if (!file) throw new CliArgsError("missing .donly file", "missing-file");
+
+    return { dependencies, runtime, file: pathToFileURL(resolve(file)) };
+  }
+
+  private splitOption(arg: string): [name: string, inlineValue: string | undefined] {
+    if (!arg.startsWith("--")) return [arg, undefined];
+    const eq = arg.indexOf("=");
+    return eq === -1 ? [arg, undefined] : [arg.slice(0, eq), arg.slice(eq + 1)];
+  }
+
+  private optionValue(
+    name: string,
+    inlineValue: string | undefined,
+    next: () => string | undefined,
+  ): string {
+    const value = inlineValue ?? next();
+    if (!value || value.startsWith("-")) {
+      throw new CliArgsError(`Option ${name} requires a value`, "invalid");
+    }
+    return value;
+  }
+
+  private parseRuntime(value: string): Runtime {
+    if (!RUNTIMES.includes(value as Runtime)) {
+      throw new CliArgsError(
+        `Invalid --runtime "${value}": expected ${RUNTIMES.join(" or ")}`,
+        "invalid",
+      );
+    }
+    return value as Runtime;
+  }
+}
