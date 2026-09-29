@@ -1,7 +1,7 @@
 import { DON, Directive, HeredocValue, ROOT_DIRECTIVE_NAME } from "donly";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, extname, join, resolve } from "node:path";
 
 const EXT_BY_DELIMITER: Record<string, string> = {
   ts: "ts",
@@ -56,30 +56,47 @@ const writeFileDirective = async (fileDirective: Directive, workDir: string): Pr
 };
 
 type ScriptContext = {
+  // Directory of the .donly file; `setup ./x.ts` paths resolve against it.
+  baseDir: string;
   workDir: string;
   runtime: Runtime;
   env: Record<string, string>;
 };
 
-// Runs a `run`/`setup`/`teardown` heredoc as a script; resolves to an error
+// Runs a `run`/`setup`/`teardown` script, given either as a heredoc body or
+// as a path to a file (relative to the .donly file); resolves to an error
 // message, or undefined when the script succeeded.
 const runScript = async (
   directive: Directive,
   kind: string,
   fileStem: string,
-  { workDir, runtime, env }: ScriptContext,
+  { baseDir, workDir, runtime, env }: ScriptContext,
 ): Promise<string | undefined> => {
-  const heredoc = directive.args[0];
-  if (!(heredoc instanceof HeredocValue)) {
-    return `\`${kind}\` directive expects a heredoc body`;
-  }
-  const ext = EXT_BY_DELIMITER[heredoc.delimiter?.toLowerCase() ?? ""] ?? "ts";
-  if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
-    return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
-  }
-  const scriptPath = join(workDir, `${fileStem}.${ext}`);
+  const source = directive.args[0];
+  let scriptPath: string;
+  let ext: string;
 
-  await writeFile(scriptPath, heredoc.content);
+  if (source instanceof HeredocValue) {
+    ext = EXT_BY_DELIMITER[source.delimiter?.toLowerCase() ?? ""] ?? "ts";
+    scriptPath = join(workDir, `${fileStem}.${ext}`);
+    if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
+      return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
+    }
+    await writeFile(scriptPath, source.content);
+  } else if (typeof source === "string" && source) {
+    // Run in place (not copied) so its own relative imports keep working.
+    scriptPath = resolve(baseDir, source);
+    ext = extname(scriptPath).slice(1).toLowerCase();
+    if (!(await Bun.file(scriptPath).exists())) {
+      return `${kind} file not found: ${scriptPath}`;
+    }
+    if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
+      return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
+    }
+  } else {
+    return `\`${kind}\` directive expects a heredoc body or a file path`;
+  }
+
   const proc = Bun.spawn(runtime === "node" ? ["node", scriptPath] : ["bun", "run", scriptPath], {
     cwd: workDir,
     env,
@@ -95,6 +112,7 @@ const runScript = async (
 const runCase = async (
   caseDirective: Directive,
   index: number,
+  baseDir: string,
   workDir: string,
   runtime: Runtime,
 ): Promise<CaseResult> => {
@@ -122,7 +140,7 @@ const runCase = async (
     return { name, ok: false, error: "case has no `run` directive" };
   }
 
-  const context: ScriptContext = { workDir, runtime, env };
+  const context: ScriptContext = { baseDir, workDir, runtime, env };
   const setups = directivesNamed(caseDirective, "setup");
   const teardowns = directivesNamed(caseDirective, "teardown");
 
@@ -193,7 +211,7 @@ export const runDonlyFile = async (
 
     let allOk = true;
     for (const [index, caseDirective] of cases.entries()) {
-      const result = await runCase(caseDirective, index, workDir, runtime);
+      const result = await runCase(caseDirective, index, dirname(resolve(filePath)), workDir, runtime);
       allOk = allOk && result.ok;
       if (result.ok) {
         console.log(`✔ ${result.name}`);

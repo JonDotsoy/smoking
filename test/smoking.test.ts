@@ -10,6 +10,7 @@ const REPO_ROOT = join(import.meta.dir, "..");
 
 const normalize = (output: string): string =>
   output
+    .replaceAll(REPO_ROOT, "<repo>")
     .replaceAll(/\/tmp\/smoking-run-[^/]+/g, "/tmp/smoking-run-<random>")
     .replaceAll(/Bun v[\d.]+ \([^)]+\)/g, "Bun v<version> (<platform>)")
     .replaceAll(/^bun (\w+) v[\d.]+ \([0-9a-f]+\)$/gm, "bun $1 v<version> (<hash>)")
@@ -148,6 +149,16 @@ describe("smoking CLI", () => {
 
   test("runs setup before run and teardown after, even when steps fail", () => {
     const { exitCode, stdout } = runCli("hooks.donly");
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toMatchSnapshot("stdout");
+    expect(stdout).not.toContain("run must not execute");
+  });
+
+  test("setup and teardown can point to files relative to the .donly file", () => {
+    const { exitCode, stdout } = runCliWithArgs([
+      join(FIXTURES_DIR, "external", "app", "cases.donly"),
+    ]);
 
     expect(exitCode).toBe(1);
     expect(stdout).toMatchSnapshot("stdout");

@@ -88,15 +88,19 @@ FILE FORMAT
         Repeatable.
 
     setup <<<lang
+    setup <path>
         Optional script that runs before "run", after the "file" directives.
         If it fails, "run" is skipped and the case fails. Repeatable; setups
-        run in order.
+        run in order. Give the script inline (heredoc) or as a path to a file,
+        resolved relative to the .donly file, not to where you run smoking:
+        for app/cases.donly, "setup ../configs/setup.ts" runs configs/setup.ts.
 
     teardown <<<lang
+    teardown <path>
         Optional script that runs after "run" and always runs, even when
         "setup" or "run" failed, so it can clean up. If it fails the case
         fails too (unless it had already failed). Repeatable; teardowns run in
-        order.
+        order. Accepts an inline heredoc or a file path, like "setup".
 
     run <<<lang
         The script to execute. The heredoc delimiter picks the language:
@@ -105,6 +109,10 @@ FILE FORMAT
         "file" directives write to, so relative paths like "./greeting.txt"
         just work. Required. Setup, run and teardown are separate processes:
         share state through files or "env".
+
+  Files referenced by "setup <path>" / "teardown <path>" run in place, so their
+  own relative imports work, and with Bun they can import the packages you
+  declared. With "--runtime node" they resolve packages from their own folder.
 
   Heredocs start with "<<<" followed by a label and continue with the
   indented lines below; the indentation is stripped from the content.
