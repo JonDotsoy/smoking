@@ -12,7 +12,8 @@ You are the orchestrator agent. Follow the rules in `AGENTS.md`.
    and verified.
 3. Delegate each task (in parallel when independent) to a sub-agent with a
    self-contained prompt. Review their result before checking the task off.
-4. Before finishing, run `bun scripts/check-tasks.ts "$(git branch --show-current)"`,
-   `bun run check` and `bun test`. If a task is pending, either finish it or
+4. Before finishing, run `bun run check` and `bun test`. If a task is pending, either finish it or
    report it as a blocker; never check it off without doing it.
-5. Commit the task file together with the work.
+5. Commit the task file together with the work. Keep it until the user asks
+   to merge; only then delete it (and commit) so the `Tasks` check passes.
+   Never delete it on your own initiative.

@@ -17,22 +17,21 @@ if (import.meta.main) {
     process.exit(2);
   }
 
-  const file = Bun.file(join(import.meta.dir, "..", ".agents", taskFileFor(branch)));
+  const path = `.agents/${taskFileFor(branch)}`;
+  const file = Bun.file(join(import.meta.dir, "..", path));
   if (!(await file.exists())) {
-    console.error(
-      `Missing task file .agents/${taskFileFor(branch)}: every branch keeps its tasks there.`,
-    );
-    process.exit(1);
+    console.log(`Branch "${branch}": no task file, ready to merge.`);
+    process.exit(0);
   }
 
   const [ok, error, content] = await result(file.text());
   if (!ok) throw error;
 
   const pending = pendingTasks(content);
-  if (pending.length > 0) {
-    console.error(`Branch "${branch}" has ${pending.length} pending task(s):`);
-    for (const task of pending) console.error(`  ${task}`);
-    process.exit(1);
-  }
-  console.log(`Branch "${branch}": no pending tasks.`);
+  console.error(
+    `Branch "${branch}" still has its task file ${path} (${pending.length} pending task(s)).`,
+  );
+  for (const task of pending) console.error(`  ${task}`);
+  console.error("The task file is deleted only when the user asks to merge the branch.");
+  process.exit(1);
 }
