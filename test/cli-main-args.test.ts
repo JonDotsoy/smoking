@@ -18,6 +18,7 @@ describe("CliMainArgs", () => {
       dependencies: [],
       runtime: "bun",
       file: pathToFileURL(resolve("cases.donly")),
+      json: false,
     });
   });
 
@@ -76,5 +77,19 @@ describe("CliMainArgs", () => {
   test("signals a missing file", () => {
     expect(errorOf().kind).toBe("missing-file");
     expect(errorOf("--runtime", "node").kind).toBe("missing-file");
+  });
+});
+
+describe("CliMainArgs report flags", () => {
+  test("--json and --output are parsed", () => {
+    const parsed = parse("--json", "--output", "out/report.json", "cases.donly");
+
+    expect(parsed.json).toBe(true);
+    expect(parsed.output).toBe(resolve("out/report.json"));
+  });
+
+  test("--output requires a value and --json takes none", () => {
+    expect(errorOf("cases.donly", "--output").kind).toBe("invalid");
+    expect(errorOf("--json=1", "cases.donly").kind).toBe("invalid");
   });
 });

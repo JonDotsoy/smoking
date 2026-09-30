@@ -30,6 +30,8 @@ Running it without a file, or with `--help`, prints the full reference
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--dependency <package>[@version]` | Install an extra package, as if the file started with a `dependency <package>` line. Repeatable: `--dependency lodash --dependency react`. |
 | `--runtime <bun\|node>`            | Executable that runs each script. Default: `bun`. With `node`, scripts run as ES modules; `tsx`/`jsx` scripts are not supported.           |
+| `--json`                           | Print the report as JSON on stdout. Script output and progress go to stderr, so stdout stays valid JSON.                                   |
+| `--output <path>`                  | Save the report, as JSON, to `<path>` (parent folders are created). Works with or without `--json`.                                        |
 | `-h`, `--help`                     | Show the help and exit.                                                                                                                    |
 
 ## Example

@@ -157,6 +157,17 @@ OPTIONS
         needs Node 22.18+ (type stripping) and "tsx"/"jsx" are not supported.
         Dependencies are always installed with Bun, whatever the runtime.
 
+  --json
+        Print the report as JSON on stdout instead of the "✔"/"✘" lines:
+        { file, runtime, ok, summary: { total, passed, failed },
+        cases: [{ name, ok, error? }] }. Script output and progress messages
+        go to stderr so stdout stays valid JSON.
+
+  --output <path>
+        Save the report, as JSON, to <path> (parent folders are created).
+        Works with or without --json; without it the usual output is still
+        printed.
+
   -h, --help
         Show this help message and exit.
 
@@ -303,6 +314,17 @@ OPTIONS
         scripts run as "node <script>" in ES module mode; TypeScript ("ts")
         needs Node 22.18+ (type stripping) and "tsx"/"jsx" are not supported.
         Dependencies are always installed with Bun, whatever the runtime.
+
+  --json
+        Print the report as JSON on stdout instead of the "✔"/"✘" lines:
+        { file, runtime, ok, summary: { total, passed, failed },
+        cases: [{ name, ok, error? }] }. Script output and progress messages
+        go to stderr so stdout stays valid JSON.
+
+  --output <path>
+        Save the report, as JSON, to <path> (parent folders are created).
+        Works with or without --json; without it the usual output is still
+        printed.
 
   -h, --help
         Show this help message and exit.

@@ -4,16 +4,28 @@ import { dirname, extname, join, resolve } from "node:path";
 import { result } from "./utils/result.ts";
 import { parseSpec, type CaseSpec, type ScriptSpec, type Spec } from "./spec.ts";
 
-type CaseResult = {
+export type CaseResult = {
   name: string;
   ok: boolean;
   error?: string;
 };
 
-const installDependency = async (spec: string, cwd: string): Promise<void> => {
+export type Report = {
+  file: string;
+  runtime: Runtime;
+  ok: boolean;
+  summary: { total: number; passed: number; failed: number };
+  cases: CaseResult[];
+};
+
+// In JSON mode stdout is reserved for the report, so child output goes to
+// stderr (fd 2) instead.
+const childStdout = (json: boolean): "inherit" | 2 => (json ? 2 : "inherit");
+
+const installDependency = async (spec: string, cwd: string, json: boolean): Promise<void> => {
   const proc = Bun.spawn(["bun", "add", spec], {
     cwd,
-    stdout: "inherit",
+    stdout: childStdout(json),
     stderr: "inherit",
   });
   const exitCode = await proc.exited;
@@ -35,6 +47,7 @@ type ScriptContext = {
   workDir: string;
   runtime: Runtime;
   env: Record<string, string>;
+  json: boolean;
 };
 
 // Runs a `run`/`setup`/`teardown` script, given inline or as a path to a
@@ -44,7 +57,7 @@ const runScript = async (
   source: ScriptSpec,
   kind: string,
   fileStem: string,
-  { baseDir, workDir, runtime, env }: ScriptContext,
+  { baseDir, workDir, runtime, env, json }: ScriptContext,
 ): Promise<string | undefined> => {
   let scriptPath: string;
   let ext: string;
@@ -73,7 +86,7 @@ const runScript = async (
   const proc = Bun.spawn(runtime === "node" ? ["node", scriptPath] : ["bun", "run", scriptPath], {
     cwd: workDir,
     env,
-    stdout: "inherit",
+    stdout: childStdout(json),
     stderr: "pipe",
   });
   const stderr = await new Response(proc.stderr).text();
@@ -92,6 +105,7 @@ const runCase = async (
   baseDir: string,
   workDir: string,
   runtime: Runtime,
+  json: boolean,
 ): Promise<CaseResult> => {
   const name = spec.name ?? `case ${index + 1}`;
 
@@ -115,7 +129,7 @@ const runCase = async (
     return { name, ok: false, error: "case has no `run` directive" };
   }
 
-  const context: ScriptContext = { baseDir, workDir, runtime, env };
+  const context: ScriptContext = { baseDir, workDir, runtime, env, json };
   const setups = spec.setups;
   const teardowns = spec.teardowns;
 
@@ -155,24 +169,34 @@ export type RunOptions = {
   // Extra packages to install, as if `dependency <spec>` lines were added at
   // the top of the file.
   dependencies?: string[];
+  // The caller prints the returned report as JSON on stdout, so nothing else
+  // may go there: progress lines and child process output go to stderr.
+  json?: boolean;
 };
 
 export const runDonlyFile = async (
   filePath: string,
-  { dependencies = [], runtime = "bun" }: RunOptions = {},
-): Promise<boolean> => {
+  { dependencies = [], runtime = "bun", json = false }: RunOptions = {},
+): Promise<Report> => {
   const spec = parseSpec(filePath, await Bun.file(filePath).text());
 
   // Every run gets its own scratch directory: dependencies are installed
   // here and case scripts run from here, so `smoking` never touches the
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
-  const [ok, error, allOk] = await result(
-    runInWorkDir({ filePath, spec, workDir, dependencies, runtime }),
+  const [ok, error, cases] = await result(
+    runInWorkDir({ filePath, spec, workDir, dependencies, runtime, json }),
   );
   await rm(workDir, { recursive: true, force: true });
   if (!ok) throw error;
-  return allOk;
+  const passed = cases.filter((c) => c.ok).length;
+  return {
+    file: filePath,
+    runtime,
+    ok: passed === cases.length,
+    summary: { total: cases.length, passed, failed: cases.length - passed },
+    cases,
+  };
 };
 
 const runInWorkDir = async ({
@@ -181,33 +205,43 @@ const runInWorkDir = async ({
   workDir,
   dependencies,
   runtime,
+  json,
 }: {
   filePath: string;
   spec: Spec;
   workDir: string;
   dependencies: string[];
   runtime: Runtime;
-}): Promise<boolean> => {
+  json: boolean;
+}): Promise<CaseResult[]> => {
   if (runtime === "node") {
     // Without this, node warns on stderr about detecting the module type.
     await writeFile(join(workDir, "package.json"), '{"type":"module"}\n');
   }
   for (const dep of new Set([...dependencies, ...spec.dependencies])) {
     if (!dep) continue;
-    console.log(`→ installing dependency: ${dep}`);
-    await installDependency(dep, workDir);
+    (json ? console.error : console.log)(`→ installing dependency: ${dep}`);
+    await installDependency(dep, workDir, json);
   }
 
   const cases = spec.cases;
   if (cases.length === 0) {
-    console.log("No `case` blocks found.");
-    return true;
+    (json ? console.error : console.log)("No `case` blocks found.");
+    return [];
   }
 
-  let allOk = true;
+  const results: CaseResult[] = [];
   for (const [index, caseSpec] of cases.entries()) {
-    const caseResult = await runCase(caseSpec, index, dirname(resolve(filePath)), workDir, runtime);
-    allOk = allOk && caseResult.ok;
+    const caseResult = await runCase(
+      caseSpec,
+      index,
+      dirname(resolve(filePath)),
+      workDir,
+      runtime,
+      json,
+    );
+    results.push(caseResult);
+    if (json) continue;
     if (caseResult.ok) {
       console.log(`✔ ${caseResult.name}`);
     } else {
@@ -216,5 +250,5 @@ const runInWorkDir = async ({
     }
   }
 
-  return allOk;
+  return results;
 };
