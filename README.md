@@ -1,4 +1,4 @@
-<img src="docs/assets/hermes.png" alt="Hermes" align="right" width="160" />
+<img src="docs/assets/smoking.png" alt="smoking" align="right" width="160" />
 
 # smoking
 
