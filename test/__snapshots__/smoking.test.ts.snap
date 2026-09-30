@@ -168,6 +168,13 @@ OPTIONS
         Works with or without --json; without it the usual output is still
         printed.
 
+  --capture
+        Record everything each case writes to the console, byte by byte, into
+        the report (use it with --json or --output). Each case gets
+        capture: { startAt, chunks: [{ elapse, stream, buffer }] } where
+        startAt is epoch ms, elapse is ms since startAt, stream is "stdout" or
+        "stderr" and buffer is the chunk's bytes as numbers (0-255).
+
   -h, --help
         Show this help message and exit.
 
@@ -325,6 +332,13 @@ OPTIONS
         Save the report, as JSON, to <path> (parent folders are created).
         Works with or without --json; without it the usual output is still
         printed.
+
+  --capture
+        Record everything each case writes to the console, byte by byte, into
+        the report (use it with --json or --output). Each case gets
+        capture: { startAt, chunks: [{ elapse, stream, buffer }] } where
+        startAt is epoch ms, elapse is ms since startAt, stream is "stdout" or
+        "stderr" and buffer is the chunk's bytes as numbers (0-255).
 
   -h, --help
         Show this help message and exit.

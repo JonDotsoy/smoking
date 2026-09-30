@@ -7,6 +7,8 @@ export type CliMainArgsResult = {
   runtime: Runtime;
   file: URL;
   json: boolean;
+  // Record each case's console output byte by byte into the report.
+  capture: boolean;
   // Where the JSON report is saved, when --output was given.
   output?: URL;
 };
@@ -33,6 +35,7 @@ export class CliMainArgs {
     const positional: string[] = [];
     let runtime: Runtime = "bun";
     let json = false;
+    let capture = false;
     let output: URL | undefined;
 
     for (let i = 0; i < args.length; i++) {
@@ -49,6 +52,11 @@ export class CliMainArgs {
           throw new CliArgsError("Option --json does not take a value", "invalid");
         }
         json = true;
+      } else if (name === "--capture") {
+        if (inlineValue !== undefined) {
+          throw new CliArgsError("Option --capture does not take a value", "invalid");
+        }
+        capture = true;
       } else if (name === "--output") {
         output = pathToFileURL(resolve(value()));
       } else if (arg.startsWith("-")) {
@@ -66,6 +74,7 @@ export class CliMainArgs {
       runtime,
       file: pathToFileURL(resolve(file)),
       json,
+      capture,
       ...(output === undefined ? {} : { output }),
     };
   }
