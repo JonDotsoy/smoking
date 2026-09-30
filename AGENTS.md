@@ -17,3 +17,10 @@ work that has several steps: it plans, records tasks, delegates and verifies.
   (`.github/workflows/tasks.yaml`) enforces this on pull requests to `develop`;
   run it locally with `bun scripts/check-tasks.ts <branch>`.
 - Mark a task done only when it is finished and verified.
+
+## Session start
+
+`.claude/settings.json` runs `.agents/scripts/session-start.sh` on every new
+session. It checks that `git` and `bun` are installed and meet the minimum
+version, and warns the user if not. It never blocks the session (always exits
+0). Add tools to the `REQUIREMENTS` list in the script.
