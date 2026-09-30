@@ -1,3 +1,5 @@
+<img src="docs/assets/smoking.png" alt="Black and white engraving of a man in a fedora and a fine pinstripe suit, looking downward" align="right" width="160" />
+
 # smoking
 
 Run test cases described in `.donly` files ([DON](https://don.jon.soy/)) and see
