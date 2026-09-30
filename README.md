@@ -1,3 +1,5 @@
+<img src="docs/assets/hermes.png" alt="Hermes" align="right" width="160" />
+
 # smoking
 
 Run test cases described in `.donly` files ([DON](https://don.jon.soy/)) and see
