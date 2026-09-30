@@ -6,6 +6,9 @@ export type CliMainArgsResult = {
   dependencies: string[];
   runtime: Runtime;
   file: URL;
+  json: boolean;
+  // Where the JSON report is saved, when --output was given.
+  output?: URL;
 };
 
 // `help`: --help/-h was given. `missing-file`: no .donly file was given.
@@ -29,6 +32,8 @@ export class CliMainArgs {
     const dependencies: string[] = [];
     const positional: string[] = [];
     let runtime: Runtime = "bun";
+    let json = false;
+    let output: URL | undefined;
 
     for (let i = 0; i < args.length; i++) {
       const arg = args[i]!;
@@ -39,6 +44,13 @@ export class CliMainArgs {
         dependencies.push(value());
       } else if (name === "--runtime") {
         runtime = this.parseRuntime(value());
+      } else if (name === "--json") {
+        if (inlineValue !== undefined) {
+          throw new CliArgsError("Option --json does not take a value", "invalid");
+        }
+        json = true;
+      } else if (name === "--output") {
+        output = pathToFileURL(resolve(value()));
       } else if (arg.startsWith("-")) {
         throw new CliArgsError(`Unknown option: ${arg}`, "invalid");
       } else {
@@ -49,7 +61,13 @@ export class CliMainArgs {
     const file = positional[0];
     if (!file) throw new CliArgsError("missing .donly file", "missing-file");
 
-    return { dependencies, runtime, file: pathToFileURL(resolve(file)) };
+    return {
+      dependencies,
+      runtime,
+      file: pathToFileURL(resolve(file)),
+      json,
+      ...(output === undefined ? {} : { output }),
+    };
   }
 
   private splitOption(arg: string): [name: string, inlineValue: string | undefined] {

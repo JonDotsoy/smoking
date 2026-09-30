@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CliArgsError, CliMainArgs } from "../src/cli-main-args.ts";
 import { HELP } from "../src/help.ts";
@@ -21,6 +23,22 @@ if (!parsedOk) {
   process.exit(1);
 }
 
-const { dependencies, runtime, file } = parsed!;
-const ok = await runDonlyFile(fileURLToPath(file), { dependencies, runtime });
-process.exit(ok ? 0 : 1);
+const { dependencies, runtime, file, json, output } = parsed!;
+const report = await runDonlyFile(fileURLToPath(file), { dependencies, runtime, json });
+const reportJson = JSON.stringify(report, null, 2) + "\n";
+
+if (output !== undefined) {
+  const outputPath = fileURLToPath(output);
+  const [saved, saveError] = await result(async () => {
+    await mkdir(dirname(outputPath), { recursive: true });
+    await Bun.write(outputPath, reportJson);
+  });
+  if (!saved) {
+    console.error(
+      `Could not save the report to ${outputPath}: ${saveError instanceof Error ? saveError.message : saveError}`,
+    );
+    process.exit(1);
+  }
+}
+if (json) process.stdout.write(reportJson);
+process.exit(report.ok ? 0 : 1);
