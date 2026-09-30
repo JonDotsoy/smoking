@@ -1,0 +1,33 @@
+name: Tasks
+
+run-name: Tasks (${{ github.head_ref }})
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tasks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pending-tasks:
+    name: No task file or pending tasks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Validate the branch has no task file (and so no pending tasks)
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: bun scripts/check-tasks.ts "$BRANCH"
