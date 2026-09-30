@@ -9,9 +9,13 @@ work that has several steps: it plans, records tasks, delegates and verifies.
 
 ## Task rules
 
-- Every new branch keeps its tasks in a file inside `.agents/`, named after the
-  branch with `/` replaced by `-` (`claude/foo` → `.agents/claude-foo.md`).
+- Every new branch keeps its tasks in a file inside `.agents/tasks/`, named
+  after the branch with `/` replaced by `-` (`claude/foo` →
+  `.agents/tasks/claude-foo.md`).
 - Tasks are a Markdown checklist: `- [ ]` pending, `- [x]` done.
+- The agent may also record the context of the process in the same file, under
+  a `## Context` section: decisions and why, findings, blockers, open questions.
+  Only the `- [ ]` lines count as tasks; the rest is free text.
 - The task file is deleted only when the agent is ready to merge, and that
   happens only when the user asks for it. Never delete it on your own.
 - A branch cannot be merged into `develop` while its task file exists (it means

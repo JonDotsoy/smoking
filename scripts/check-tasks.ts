@@ -17,7 +17,7 @@ if (import.meta.main) {
     process.exit(2);
   }
 
-  const path = `.agents/${taskFileFor(branch)}`;
+  const path = `.agents/tasks/${taskFileFor(branch)}`;
   const file = Bun.file(join(import.meta.dir, "..", path));
   if (!(await file.exists())) {
     console.log(`Branch "${branch}": no task file, ready to merge.`);
