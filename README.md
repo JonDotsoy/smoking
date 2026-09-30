@@ -5,7 +5,7 @@
 Run test cases described in `.donly` files ([DON](https://don.jon.soy/)) and see
 which ones passed. A `.donly` file lists the npm packages a test needs and one
 or more `case` blocks; `smoking` installs the packages, runs every case in an
-isolated temporary directory and prints `✔` or `✘` for each one.
+isolated temporary directory and prints `✔` or `✘` for each one (or a JSON report, with `--json`).
 
 ## Requirements
 
@@ -94,12 +94,65 @@ to the `.donly` file, not to where you run `smoking`: in `app/cases.donly`,
 `setup ../configs/setup.ts` runs `configs/setup.ts`. Each script is its own
 process, so share state through files or `env`.
 
+### YAML files
+
+Cases can also be written in YAML (`.yaml` / `.yml`); the file extension picks
+the format.
+
+```yaml
+dependencies:
+  - hotconfigs
+cases:
+  - name: greets
+    env:
+      FOO: tar
+    files:
+      ./greeting.txt: hello
+    setup: console.log("setting up")
+    run: |
+      import { readFileSync } from "node:fs";
+      if (readFileSync("./greeting.txt", "utf8") !== "hello") throw new Error("bad");
+    teardown:
+      file: ./teardown.ts # or { code: "...", lang: js }
+```
+
+A script (`setup`, `run`, `teardown`) is a string (inline TypeScript),
+`{ file: <path> }` (relative to the YAML file) or `{ code, lang }`.
+
 ## Output and exit codes
 
 Script output is printed as it happens, followed by one line per case: `✔ name`
 if it passed, or `✘ name` with the error if it failed. The exit code is `0` when
 every case passed and `1` when a case failed or the command was used
 incorrectly.
+
+## JSON report
+
+`--json` prints the report as JSON on stdout instead of the `✔`/`✘` lines, and
+`--output <path>` saves the same JSON to a file (it can be combined with
+`--json`). With `--json`, script output and progress messages go to stderr, so
+stdout can be piped straight into tools like `jq`.
+
+```sh
+bunx @jondotsoy/smoking --json examples/basic.donly | jq '.summary'
+bunx @jondotsoy/smoking --output reports/smoking.json examples/basic.donly
+```
+
+```json
+{
+  "file": "/path/to/examples/basic.donly",
+  "runtime": "bun",
+  "ok": false,
+  "summary": { "total": 2, "passed": 1, "failed": 1 },
+  "cases": [
+    { "name": "a", "ok": true },
+    { "name": "b", "ok": false, "error": "..." }
+  ]
+}
+```
+
+`error` is only present on failed cases. The exit code is the same as without
+`--json`.
 
 ## Isolation
 
@@ -131,28 +184,3 @@ the version, builds and runs `npm publish dist/` using npm trusted publishing
 ## License
 
 [MIT](LICENSE) © Jonathan Delgado
-
-## YAML files
-
-Cases can also be written in YAML (`.yaml` / `.yml`); the file extension picks
-the format.
-
-```yaml
-dependencies:
-  - hotconfigs
-cases:
-  - name: greets
-    env:
-      FOO: tar
-    files:
-      ./greeting.txt: hello
-    setup: console.log("setting up")
-    run: |
-      import { readFileSync } from "node:fs";
-      if (readFileSync("./greeting.txt", "utf8") !== "hello") throw new Error("bad");
-    teardown:
-      file: ./teardown.ts # or { code: "...", lang: js }
-```
-
-A script (`setup`, `run`, `teardown`) is a string (inline TypeScript),
-`{ file: <path> }` (relative to the YAML file) or `{ code, lang }`.
