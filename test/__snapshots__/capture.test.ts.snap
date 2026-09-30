@@ -1,0 +1,46 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the report file saved with --output matches its snapshot 1`] = `
+{
+  "cases": [
+    {
+      "cast": {
+        "chunks": [
+          {
+            "buffer": [
+              104,
+              105,
+              0,
+              255,
+            ],
+            "elapse": "<elapse>",
+            "stream": "stdout",
+          },
+          {
+            "buffer": [
+              111,
+              111,
+              112,
+              115,
+              10,
+            ],
+            "elapse": "<elapse>",
+            "stream": "stderr",
+          },
+        ],
+        "startAt": "<startAt>",
+      },
+      "name": "prints",
+      "ok": true,
+    },
+  ],
+  "file": "<file>",
+  "ok": true,
+  "runtime": "bun",
+  "summary": {
+    "failed": 0,
+    "passed": 1,
+    "total": 1,
+  },
+}
+`;

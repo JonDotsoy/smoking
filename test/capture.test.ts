@@ -1,4 +1,8 @@
 import { expect, test } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { result } from "../src/utils/result.ts";
 import { runDonly } from "./helpers.ts";
 
 const CASES = `case prints {
@@ -31,4 +35,27 @@ test("--no-cast leaves the cast out of the report", async () => {
 test("without a report flag there is no cast", async () => {
   const { stdout } = await runDonly(CASES);
   expect(stdout).not.toContain("startAt");
+});
+
+test("the report file saved with --output matches its snapshot", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "smoking-report-"));
+  const output = join(dir, "nested", "report.json");
+  const [ok, error, report] = await result(async () => {
+    await runDonly(CASES, (file) => ["--output", output, file]);
+    return JSON.parse(await Bun.file(output).text());
+  });
+  await rm(dir, { recursive: true, force: true });
+  if (!ok) throw error;
+
+  // The file path, start time and timings change on every run.
+  report.file = "<file>";
+  for (const c of report.cases) {
+    expect(c.cast.startAt).toBeGreaterThan(1_000_000_000_000);
+    c.cast.startAt = "<startAt>";
+    for (const chunk of c.cast.chunks) {
+      expect(chunk.elapse).toBeGreaterThanOrEqual(0);
+      chunk.elapse = "<elapse>";
+    }
+  }
+  expect(report).toMatchSnapshot();
 });
