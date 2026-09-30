@@ -1,4 +1,4 @@
-<img src="docs/assets/smoking.png" alt="Grabado en blanco y negro de un hombre con sombrero fedora y traje de rayas finas, con la mirada baja" align="right" width="160" />
+<img src="docs/assets/smoking.png" alt="Black and white engraving of a man in a fedora and a fine pinstripe suit, looking downward" align="right" width="160" />
 
 # smoking
 
