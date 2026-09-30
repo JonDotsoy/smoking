@@ -85,7 +85,7 @@ describe("CliMainArgs report flags", () => {
     const parsed = parse("--json", "--output", "out/report.json", "cases.donly");
 
     expect(parsed.json).toBe(true);
-    expect(parsed.output).toBe(resolve("out/report.json"));
+    expect(parsed.output).toEqual(pathToFileURL(resolve("out/report.json")));
   });
 
   test("--output requires a value and --json takes none", () => {

@@ -28,13 +28,14 @@ const report = await runDonlyFile(fileURLToPath(file), { dependencies, runtime, 
 const reportJson = JSON.stringify(report, null, 2) + "\n";
 
 if (output !== undefined) {
+  const outputPath = fileURLToPath(output);
   const [saved, saveError] = await result(async () => {
-    await mkdir(dirname(output), { recursive: true });
-    await Bun.write(output, reportJson);
+    await mkdir(dirname(outputPath), { recursive: true });
+    await Bun.write(outputPath, reportJson);
   });
   if (!saved) {
     console.error(
-      `Could not save the report to ${output}: ${saveError instanceof Error ? saveError.message : saveError}`,
+      `Could not save the report to ${outputPath}: ${saveError instanceof Error ? saveError.message : saveError}`,
     );
     process.exit(1);
   }

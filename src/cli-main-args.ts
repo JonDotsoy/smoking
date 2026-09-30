@@ -7,8 +7,8 @@ export type CliMainArgsResult = {
   runtime: Runtime;
   file: URL;
   json: boolean;
-  // Absolute path where the JSON report is saved, when --output was given.
-  output?: string;
+  // Where the JSON report is saved, when --output was given.
+  output?: URL;
 };
 
 // `help`: --help/-h was given. `missing-file`: no .donly file was given.
@@ -33,7 +33,7 @@ export class CliMainArgs {
     const positional: string[] = [];
     let runtime: Runtime = "bun";
     let json = false;
-    let output: string | undefined;
+    let output: URL | undefined;
 
     for (let i = 0; i < args.length; i++) {
       const arg = args[i]!;
@@ -50,7 +50,7 @@ export class CliMainArgs {
         }
         json = true;
       } else if (name === "--output") {
-        output = resolve(value());
+        output = pathToFileURL(resolve(value()));
       } else if (arg.startsWith("-")) {
         throw new CliArgsError(`Unknown option: ${arg}`, "invalid");
       } else {
