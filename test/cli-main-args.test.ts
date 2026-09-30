@@ -13,9 +13,12 @@ const errorOf = (...args: string[]): CliArgsError => {
 };
 
 describe("CliMainArgs", () => {
-  test("--capture turns on console capture and takes no value", () => {
-    expect(parse("--capture", "cases.donly").capture).toBe(true);
-    expect(errorOf("--capture=1", "cases.donly").kind).toBe("invalid");
+  test("captures the console only when a report is requested, unless --no-cast", () => {
+    expect(parse("cases.donly").capture).toBe(false);
+    expect(parse("--json", "cases.donly").capture).toBe(true);
+    expect(parse("--output", "r.json", "cases.donly").capture).toBe(true);
+    expect(parse("--json", "--no-cast", "cases.donly").capture).toBe(false);
+    expect(errorOf("--no-cast=1", "cases.donly").kind).toBe("invalid");
   });
 
   test("defaults to the bun runtime and no extra dependencies", () => {

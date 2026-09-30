@@ -64,12 +64,13 @@ OPTIONS
         Works with or without --json; without it the usual output is still
         printed.
 
-  --capture
-        Record everything each case writes to the console, byte by byte, into
-        the report (use it with --json or --output). Each case gets
-        capture: { startAt, chunks: [{ elapse, stream, buffer }] } where
-        startAt is epoch ms, elapse is ms since startAt, stream is "stdout" or
-        "stderr" and buffer is the chunk's bytes as numbers (0-255).
+  --no-cast
+        With --json or --output the report also records everything each case
+        writes to the console, byte by byte: every case gets
+        cast: { startAt, chunks: [{ elapse, stream, buffer }] } where startAt
+        is epoch ms, elapse is ms since startAt, stream is "stdout" or
+        "stderr" and buffer is the chunk's bytes as numbers (0-255). Pass
+        --no-cast to leave it out. Without a report there is no cast.
 
   -h, --help
         Show this help message and exit.

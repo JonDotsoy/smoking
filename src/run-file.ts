@@ -10,8 +10,8 @@ export type CaseResult = {
   name: string;
   ok: boolean;
   error?: string;
-  // Byte-by-byte console output of the case's scripts, with `--capture`.
-  capture?: Capture;
+  // Byte-by-byte console output of the case's scripts, in the report unless `--no-cast`.
+  cast?: Capture;
 };
 
 export type Report = {
@@ -186,7 +186,7 @@ const runCase = async (
     if (teardownError) error ??= `teardown failed: ${teardownError}`;
   }
 
-  const captured = capture ? { capture: capture.toJSON() } : {};
+  const captured = capture ? { cast: capture.toJSON() } : {};
   return error === undefined
     ? { name, ok: true, ...captured }
     : { name, ok: false, error, ...captured };
@@ -205,7 +205,7 @@ export type RunOptions = {
   // The caller prints the returned report as JSON on stdout, so nothing else
   // may go there: progress lines and child process output go to stderr.
   json?: boolean;
-  // Record each case's console output byte by byte into its `capture`.
+  // Record each case's console output byte by byte into its `cast`.
   capture?: boolean;
 };
 

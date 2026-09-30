@@ -7,7 +7,8 @@ export type CliMainArgsResult = {
   runtime: Runtime;
   file: URL;
   json: boolean;
-  // Record each case's console output byte by byte into the report.
+  // Record each case's console output byte by byte into the report: on when
+  // a report is requested (--json or --output), off with --no-cast.
   capture: boolean;
   // Where the JSON report is saved, when --output was given.
   output?: URL;
@@ -35,7 +36,7 @@ export class CliMainArgs {
     const positional: string[] = [];
     let runtime: Runtime = "bun";
     let json = false;
-    let capture = false;
+    let noCast = false;
     let output: URL | undefined;
 
     for (let i = 0; i < args.length; i++) {
@@ -52,11 +53,11 @@ export class CliMainArgs {
           throw new CliArgsError("Option --json does not take a value", "invalid");
         }
         json = true;
-      } else if (name === "--capture") {
+      } else if (name === "--no-cast") {
         if (inlineValue !== undefined) {
-          throw new CliArgsError("Option --capture does not take a value", "invalid");
+          throw new CliArgsError("Option --no-cast does not take a value", "invalid");
         }
-        capture = true;
+        noCast = true;
       } else if (name === "--output") {
         output = pathToFileURL(resolve(value()));
       } else if (arg.startsWith("-")) {
@@ -74,7 +75,8 @@ export class CliMainArgs {
       runtime,
       file: pathToFileURL(resolve(file)),
       json,
-      capture,
+      // The cast only exists in a report, so it needs --json or --output.
+      capture: !noCast && (json || output !== undefined),
       ...(output === undefined ? {} : { output }),
     };
   }
