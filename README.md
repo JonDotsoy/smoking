@@ -2,10 +2,13 @@
 
 # smoking
 
-Run test cases described in `.donly` files ([DON](https://don.jon.soy/)) and see
-which ones passed. A `.donly` file lists the npm packages a test needs and one
-or more `case` blocks; `smoking` installs the packages, runs every case in an
-isolated temporary directory and prints `✔` or `✘` for each one (or a JSON report, with `--json`).
+Create smoke tests quickly. A single manifest (a `.donly` file, written in
+[DON](https://don.jon.soy/), or YAML) can hold and run several scripts, each in
+its own isolated environment. `smoking` installs the npm packages the tests
+need, prepares the working files and scripts, runs every `case` in an isolated
+temporary directory, and cleans those workspaces up afterwards with `teardown`
+scripts and by deleting the temporary directory. It prints `✔` or `✘` for each
+case (or a JSON report, with `--json`).
 
 ## Requirements
 
