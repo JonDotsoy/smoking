@@ -34,6 +34,7 @@ export const HELP = `smoking - run test cases described in .donly files
 USAGE
   bunx @jondotsoy/smoking [options] <file.donly>
   npx  @jondotsoy/smoking [options] <file.donly>
+  bunx @jondotsoy/smoking play <report file>
 
 OPTIONS
   --dependency <package>[@version]
@@ -74,6 +75,14 @@ OPTIONS
 
   -h, --help
         Show this help message and exit.
+
+PLAY
+  smoking play <report file>
+        Replay the console output recorded in a report saved with --output (or
+        redirected from --json): every case's bytes are written back to the
+        terminal with their original timing, stdout to stdout and stderr to
+        stderr, each case preceded by a "▶ <name>" line on stderr. Fails when
+        the report has no cast (it was saved with --no-cast).
 
 DESCRIPTION
   A .donly file (DON, "Directive Object Notation") declares the npm packages a

@@ -35,6 +35,18 @@ Running it without a file, or with `--help`, prints the full reference
 | `--no-cast`                        | With `--json` or `--output`, each case in the report has `cast: { startAt, chunks: [{ elapse, stream, buffer }] }`, its console output byte by byte. `--no-cast` leaves it out. |
 | `-h`, `--help`                     | Show the help and exit.                                                                                                                                                         |
 
+### Replaying a report
+
+```sh
+bunx @jondotsoy/smoking --output report.json examples/basic.donly
+bunx @jondotsoy/smoking play report.json
+```
+
+`play` writes the console output recorded in the report back to the terminal,
+byte by byte and with its original timing (each case is announced with a
+`▶ <name>` line on stderr). It needs a report with a cast, so it won't work on
+one saved with `--no-cast`.
+
 ## Example
 
 `examples/basic.donly`:
