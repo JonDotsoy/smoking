@@ -38,15 +38,33 @@ type CaseResult = {
   ok: boolean;
   error?: string;
   cast?: Capture;
+  profiles?: ScriptProfile[];
 };
 ```
 
-| Field   | Description                                                     |
-| ------- | --------------------------------------------------------------- |
-| `name`  | Name of the case                                                |
-| `ok`    | `true` when the case passed                                     |
-| `error` | Error message. Only present on failed cases                     |
-| `cast`  | Console output of the case's scripts. Left out with `--no-cast` |
+| Field      | Description                                                            |
+| ---------- | ---------------------------------------------------------------------- |
+| `name`     | Name of the case                                                       |
+| `ok`       | `true` when the case passed                                            |
+| `error`    | Error message. Only present on failed cases                            |
+| `cast`     | Console output of the case's scripts. Left out with `--no-cast`        |
+| `profiles` | CPU profile of each script the case ran. Only present with `--profile` |
+
+## Profile
+
+```ts
+type ScriptProfile = {
+  phase: "setup" | "run" | "teardown";
+  script: string;
+  profile: unknown;
+};
+```
+
+| Field     | Description                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `phase`   | Which script of the case was profiled                                                                                    |
+| `script`  | Path of the script as it was run                                                                                         |
+| `profile` | V8 CPU profile (`.cpuprofile`) written by `bun`/`node --cpu-prof`; open it in Chrome DevTools or speedscope as a `.json` |
 
 ## Cast
 
@@ -97,3 +115,4 @@ meaning, is a major one. Add a line to the changelog with every change.
 | Version | Date       | Change                                                                            |
 | ------- | ---------- | --------------------------------------------------------------------------------- |
 | 1.0.0   | 2026-10-01 | First documented version: `file`, `runtime`, `ok`, `summary`, `cases` with `cast` |
+| 1.1.0   | 2026-10-01 | `profiles` on cases, recorded with `--profile`                                    |

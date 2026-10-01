@@ -21,6 +21,13 @@ describe("CliMainArgs", () => {
     expect(errorOf("--no-cast=1", "cases.donly").kind).toBe("invalid");
   });
 
+  test("records profiles only with --profile and a report", () => {
+    expect(parse("--json", "cases.donly").profile).toBe(false);
+    expect(parse("--profile", "cases.donly").profile).toBe(false);
+    expect(parse("--json", "--profile", "cases.donly").profile).toBe(true);
+    expect(errorOf("--profile=1", "cases.donly").kind).toBe("invalid");
+  });
+
   test("defaults to the bun runtime and no extra dependencies", () => {
     expect(parse("cases.donly")).toEqual({
       dependencies: [],
@@ -28,6 +35,7 @@ describe("CliMainArgs", () => {
       file: pathToFileURL(resolve("cases.donly")),
       json: false,
       capture: false,
+      profile: false,
     });
   });
 

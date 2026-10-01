@@ -55,8 +55,14 @@ if (!parsedOk) {
   process.exit(1);
 }
 
-const { dependencies, runtime, file, json, capture, output } = parsed!;
-const report = await runDonlyFile(fileURLToPath(file), { dependencies, runtime, json, capture });
+const { dependencies, runtime, file, json, capture, profile, output } = parsed!;
+const report = await runDonlyFile(fileURLToPath(file), {
+  dependencies,
+  runtime,
+  json,
+  capture,
+  profile,
+});
 const reportJson = JSON.stringify(report, null, 2) + "\n";
 
 if (output !== undefined) {

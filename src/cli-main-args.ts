@@ -10,6 +10,8 @@ export type CliMainArgsResult = {
   // Record each case's console output byte by byte into the report: on when
   // a report is requested (--json or --output), off with --no-cast.
   capture: boolean;
+  // Record a CPU profile of each script into the report (--profile).
+  profile: boolean;
   // Where the JSON report is saved, when --output was given.
   output?: URL;
 };
@@ -37,6 +39,7 @@ export class CliMainArgs {
     let runtime: Runtime = "bun";
     let json = false;
     let noCast = false;
+    let profile = false;
     let output: URL | undefined;
 
     for (let i = 0; i < args.length; i++) {
@@ -58,6 +61,11 @@ export class CliMainArgs {
           throw new CliArgsError("Option --no-cast does not take a value", "invalid");
         }
         noCast = true;
+      } else if (name === "--profile") {
+        if (inlineValue !== undefined) {
+          throw new CliArgsError("Option --profile does not take a value", "invalid");
+        }
+        profile = true;
       } else if (name === "--output") {
         output = pathToFileURL(resolve(value()));
       } else if (arg.startsWith("-")) {
@@ -76,6 +84,8 @@ export class CliMainArgs {
       file: pathToFileURL(resolve(file)),
       json,
       // The cast only exists in a report, so it needs --json or --output.
+      // Like the cast, profiles only exist in a report.
+      profile: profile && (json || output !== undefined),
       capture: !noCast && (json || output !== undefined),
       ...(output === undefined ? {} : { output }),
     };
