@@ -167,10 +167,8 @@ exports[`report.json with its profile and network matches its snapshot (node) 1`
             "x-case": "post",
           },
           "responseHeaders": {
-            "Connection": "keep-alive",
             "Content-Length": "4",
             "Date": "<Date>",
-            "Keep-Alive": "<Keep-Alive>",
             "content-type": "text/plain",
             "x-smoking": "pong",
           },
@@ -194,10 +192,8 @@ exports[`report.json with its profile and network matches its snapshot (node) 1`
             "x-case": "get",
           },
           "responseHeaders": {
-            "Connection": "keep-alive",
             "Content-Length": "4",
             "Date": "<Date>",
-            "Keep-Alive": "<Keep-Alive>",
             "content-type": "text/plain",
             "x-smoking": "pong",
           },

@@ -61,10 +61,12 @@ const normalize = (report: Record<string, any>) => {
       headers &&
       Object.fromEntries(
         Object.entries(headers)
+          // Whether a response carries these depends on the runtime's version.
+          .filter(([name]) => !["connection", "keep-alive"].includes(name.toLowerCase()))
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([name, value]) => [
             name,
-            ["date", "host", "keep-alive"].includes(name.toLowerCase()) ? `<${name}>` : value,
+            ["date", "host"].includes(name.toLowerCase()) ? `<${name}>` : value,
           ]),
       );
     return {
