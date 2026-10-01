@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { Writable } from "node:stream";
 import { dirname, extname, join, resolve } from "node:path";
 import { ConsoleCapture, type Capture } from "./capture.ts";
+import networkPreload from "./network-preload.txt" with { type: "text" };
+import { readNetwork, type NetworkRequest } from "./network.ts";
 import { result } from "./utils/result.ts";
 import { parseSpec, type CaseSpec, type ScriptSpec, type Spec } from "./spec.ts";
 
@@ -14,6 +16,8 @@ export type CaseResult = {
   cast?: Capture;
   // CPU profile of each script the case ran, in the report with `--profile`.
   profiles?: ScriptProfile[];
+  // HTTP requests the case's scripts made, in the report with `--network`.
+  network?: NetworkRequest[];
 };
 
 // A V8 CPU profile (`.cpuprofile`, loadable in Chrome DevTools or speedscope)
@@ -67,6 +71,9 @@ type ScriptContext = {
   // With --profile: where `--cpu-prof` writes, and where profiles are collected.
   profileDir?: string;
   profiles?: ScriptProfile[];
+  // With --network: where each script's events are written, and where requests
+  // are collected.
+  network?: { dir: string; requests: NetworkRequest[] };
 };
 
 // Runs a `run`/`setup`/`teardown` script, given inline or as a path to a
@@ -76,7 +83,7 @@ const runScript = async (
   source: ScriptSpec,
   kind: string,
   fileStem: string,
-  { baseDir, workDir, runtime, env, json, capture, profileDir, profiles }: ScriptContext,
+  { baseDir, workDir, runtime, env, json, capture, profileDir, profiles, network }: ScriptContext,
 ): Promise<string | undefined> => {
   let scriptPath: string;
   let ext: string;
@@ -103,17 +110,25 @@ const runScript = async (
   }
 
   const scriptDir = profileDir && join(profileDir, fileStem);
-  const profileFlags = scriptDir ? ["--cpu-prof", "--cpu-prof-dir", scriptDir] : [];
-  // Bun only takes its profiler flags before the script, without `run`.
+  const networkFile = network && join(network.dir, `${fileStem}.ndjson`);
+  const preload = network && join(network.dir, "preload.mjs");
+  const flags = [
+    ...(scriptDir ? ["--cpu-prof", "--cpu-prof-dir", scriptDir] : []),
+    ...(preload && runtime === "node"
+      ? ["--experimental-network-inspection", "--import", preload]
+      : []),
+    ...(preload && runtime === "bun" ? ["--preload", preload] : []),
+  ];
+  // Bun only takes these flags before the script, without `run`.
   const command =
     runtime === "node"
-      ? ["node", ...profileFlags, scriptPath]
-      : profileFlags.length > 0
-        ? ["bun", ...profileFlags, scriptPath]
+      ? ["node", ...flags, scriptPath]
+      : flags.length > 0
+        ? ["bun", ...flags, scriptPath]
         : ["bun", "run", scriptPath];
   const proc = Bun.spawn(command, {
     cwd: workDir,
-    env,
+    env: networkFile ? { ...env, SMOKING_NETWORK_FILE: networkFile } : env,
     stdout: capture ? "pipe" : childStdout(json),
     stderr: "pipe",
   });
@@ -128,6 +143,10 @@ const runScript = async (
     capture?.pipe(proc.stdout as ReadableStream<Uint8Array>, "stdout", stdoutDestination),
   ]);
   const exitCode = await proc.exited;
+  if (networkFile && network) {
+    const phase = kind as ScriptProfile["phase"];
+    network.requests.push(...(await readNetwork(networkFile, phase, scriptPath)));
+  }
   if (scriptDir && profiles) {
     const phase = kind as ScriptProfile["phase"];
     profiles.push(...(await readProfiles(scriptDir, phase, scriptPath)));
@@ -181,6 +200,7 @@ const runCase = async (
   json: boolean,
   capture?: ConsoleCapture,
   profileDir?: string,
+  networkDir?: string,
 ): Promise<CaseResult> => {
   const name = spec.name ?? `case ${index + 1}`;
 
@@ -205,6 +225,7 @@ const runCase = async (
   }
 
   const profiles: ScriptProfile[] | undefined = profileDir ? [] : undefined;
+  const network = networkDir ? { dir: networkDir, requests: [] } : undefined;
   const context: ScriptContext = {
     baseDir,
     workDir,
@@ -214,6 +235,7 @@ const runCase = async (
     capture,
     profileDir: profileDir && join(profileDir, `case-${index}`),
     profiles,
+    network,
   };
   const setups = spec.setups;
   const teardowns = spec.teardowns;
@@ -244,6 +266,7 @@ const runCase = async (
   const extra = {
     ...(capture ? { cast: capture.toJSON() } : {}),
     ...(profiles ? { profiles } : {}),
+    ...(network ? { network: network.requests } : {}),
   };
   return error === undefined ? { name, ok: true, ...extra } : { name, ok: false, error, ...extra };
 };
@@ -266,6 +289,8 @@ export type RunOptions = {
   // Run every script with `--cpu-prof` and record the CPU profiles into each
   // case's `profiles`.
   profile?: boolean;
+  // Record the HTTP requests each case's scripts make into its `network`.
+  network?: boolean;
 };
 
 export const runDonlyFile = async (
@@ -276,6 +301,7 @@ export const runDonlyFile = async (
     json = false,
     capture = false,
     profile = false,
+    network = false,
   }: RunOptions = {},
 ): Promise<Report> => {
   const spec = parseSpec(filePath, await Bun.file(filePath).text());
@@ -285,11 +311,24 @@ export const runDonlyFile = async (
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
   const profileDir = profile ? await mkdtemp(join(tmpdir(), "smoking-prof-")) : undefined;
+  const networkDir = network ? await mkdtemp(join(tmpdir(), "smoking-net-")) : undefined;
+  if (networkDir) await writeFile(join(networkDir, "preload.mjs"), networkPreload);
   const [ok, error, cases] = await result(
-    runInWorkDir({ filePath, spec, workDir, dependencies, runtime, json, capture, profileDir }),
+    runInWorkDir({
+      filePath,
+      spec,
+      workDir,
+      dependencies,
+      runtime,
+      json,
+      capture,
+      profileDir,
+      networkDir,
+    }),
   );
   await rm(workDir, { recursive: true, force: true });
   if (profileDir) await rm(profileDir, { recursive: true, force: true });
+  if (networkDir) await rm(networkDir, { recursive: true, force: true });
   if (!ok) throw error;
   const passed = cases.filter((c) => c.ok).length;
   return {
@@ -310,6 +349,7 @@ const runInWorkDir = async ({
   json,
   capture,
   profileDir,
+  networkDir,
 }: {
   filePath: string;
   spec: Spec;
@@ -319,6 +359,7 @@ const runInWorkDir = async ({
   json: boolean;
   capture: boolean;
   profileDir?: string;
+  networkDir?: string;
 }): Promise<CaseResult[]> => {
   if (runtime === "node") {
     // Without this, node warns on stderr about detecting the module type.
@@ -347,6 +388,7 @@ const runInWorkDir = async ({
       json,
       capture ? new ConsoleCapture() : undefined,
       profileDir,
+      networkDir,
     );
     results.push(caseResult);
     if (json) continue;

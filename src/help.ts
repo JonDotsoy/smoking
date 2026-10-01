@@ -81,6 +81,15 @@ OPTIONS
         DevTools or speedscope). Needs --json or --output; profiles are large,
         so it is off by default.
 
+  --network
+        Record the HTTP requests each script makes: every case gets
+        network: [{ phase, script, method, url, requestHeaders, postData?,
+        startedAt, duration, status, statusText, mimeType, responseHeaders,
+        error? }]. With "node" they are captured with node:inspector
+        (Network domain); with "bun", which has none, "fetch" is wrapped, so
+        only fetch calls are seen (and only there is postData, the request body,
+        recorded). Needs --json or --output.
+
   -h, --help
         Show this help message and exit.
 

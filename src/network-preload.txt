@@ -1,0 +1,87 @@
+// Saved as .txt (imported as text and written out as preload.mjs) so tsc leaves it alone.
+// Preloaded into every script run with `--network` (as text, written to a
+// scratch directory by run-file.ts). It records the script's HTTP requests as
+// Chrome DevTools Protocol `Network.*` events, one JSON per line, into the
+// file named by SMOKING_NETWORK_FILE.
+//
+// Node reports them through `node:inspector` (`Network.enable`, which needs
+// `--experimental-network-inspection`). Bun's inspector has no Network
+// domain, so there `fetch` is wrapped to emit the same events.
+import inspector from "node:inspector";
+import { appendFileSync } from "node:fs";
+
+const file = process.env.SMOKING_NETWORK_FILE;
+
+const emit = (method, params) => {
+  appendFileSync(file, JSON.stringify({ method, params }) + "\n");
+};
+
+const trackInspector = () => {
+  const session = new inspector.Session();
+  session.connect();
+  for (const name of [
+    "requestWillBeSent",
+    "responseReceived",
+    "loadingFinished",
+    "loadingFailed",
+  ]) {
+    session.on(`Network.${name}`, (message) => emit(`Network.${name}`, message.params));
+  }
+  session.post("Network.enable");
+};
+
+const trackFetch = () => {
+  const original = globalThis.fetch;
+  let count = 0;
+  const now = () => performance.now() / 1000;
+  globalThis.fetch = Object.assign((input, init) => {
+    const requestId = `fetch-${++count}`;
+    const source = input instanceof Request ? input : undefined;
+    const url = source ? source.url : String(input);
+    const headers = Object.fromEntries(new Headers(init?.headers ?? source?.headers).entries());
+    const postData = typeof init?.body === "string" ? init.body : undefined;
+    emit("Network.requestWillBeSent", {
+      requestId,
+      timestamp: now(),
+      wallTime: Date.now() / 1000,
+      request: {
+        url,
+        method: init?.method ?? source?.method ?? "GET",
+        headers,
+        hasPostData: postData !== undefined,
+        ...(postData === undefined ? {} : { postData }),
+      },
+    });
+    return original(input, init).then(
+      (response) => {
+        emit("Network.responseReceived", {
+          requestId,
+          timestamp: now(),
+          type: "Fetch",
+          response: {
+            url: response.url || url,
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            mimeType: (response.headers.get("content-type") ?? "").split(";")[0],
+          },
+        });
+        emit("Network.loadingFinished", { requestId, timestamp: now() });
+        return response;
+      },
+      (error) => {
+        emit("Network.loadingFailed", {
+          requestId,
+          timestamp: now(),
+          errorText: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      },
+    );
+  }, original);
+};
+
+// Top-level await so the fallback is in place before the script starts.
+if (file) {
+  await Promise.resolve().then(trackInspector).catch(trackFetch);
+}

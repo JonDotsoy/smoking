@@ -28,6 +28,13 @@ describe("CliMainArgs", () => {
     expect(errorOf("--profile=1", "cases.donly").kind).toBe("invalid");
   });
 
+  test("records requests only with --network and a report", () => {
+    expect(parse("--json", "cases.donly").network).toBe(false);
+    expect(parse("--network", "cases.donly").network).toBe(false);
+    expect(parse("--output", "r.json", "--network", "cases.donly").network).toBe(true);
+    expect(errorOf("--network=1", "cases.donly").kind).toBe("invalid");
+  });
+
   test("defaults to the bun runtime and no extra dependencies", () => {
     expect(parse("cases.donly")).toEqual({
       dependencies: [],
@@ -36,6 +43,7 @@ describe("CliMainArgs", () => {
       json: false,
       capture: false,
       profile: false,
+      network: false,
     });
   });
 
