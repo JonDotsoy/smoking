@@ -32,7 +32,9 @@ jobs:
         run: bun run build
 
       - name: Pack the package
-        run: npm pack dist/ --pack-destination "$RUNNER_TEMP/pack"
+        run: |
+          mkdir -p "$RUNNER_TEMP/pack"
+          npm pack dist/ --pack-destination "$RUNNER_TEMP/pack"
 
       - name: Upload the package
         uses: actions/upload-artifact@v4
