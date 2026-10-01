@@ -40,14 +40,16 @@ Running it without a file, or with `--help`, prints the full reference
 
 ### Options
 
-| Option                             | Description                                                                                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--dependency <package>[@version]` | Install an extra package, as if the file started with a `dependency <package>` line. Repeatable: `--dependency lodash --dependency react`.                                      |
-| `--runtime <bun\|node>`            | Executable that runs each script. Default: `bun`. With `node`, scripts run as ES modules; `tsx`/`jsx` scripts are not supported.                                                |
-| `--json`                           | Print the report as JSON on stdout. Script output and progress go to stderr, so stdout stays valid JSON.                                                                        |
-| `--output <path>`                  | Save the report, as JSON, to `<path>` (parent folders are created). Works with or without `--json`.                                                                             |
-| `--no-cast`                        | With `--json` or `--output`, each case in the report has `cast: { startAt, chunks: [{ elapse, stream, buffer }] }`, its console output byte by byte. `--no-cast` leaves it out. |
-| `-h`, `--help`                     | Show the help and exit.                                                                                                                                                         |
+| Option                             | Description                                                                                                                                                                                                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dependency <package>[@version]` | Install an extra package, as if the file started with a `dependency <package>` line. Repeatable: `--dependency lodash --dependency react`.                                                                                                        |
+| `--runtime <bun\|node>`            | Executable that runs each script. Default: `bun`. With `node`, scripts run as ES modules; `tsx`/`jsx` scripts are not supported.                                                                                                                  |
+| `--json`                           | Print the report as JSON on stdout. Script output and progress go to stderr, so stdout stays valid JSON.                                                                                                                                          |
+| `--output <path>`                  | Save the report, as JSON, to `<path>` (parent folders are created). Works with or without `--json`.                                                                                                                                               |
+| `--no-profile`                     | With `--json` or `--output`, every script runs with `--cpu-prof` and each case gets `profiles: [{ phase, script, profile }]` (V8 `.cpuprofile`, opens in Chrome DevTools or speedscope). `--no-profile` leaves it out.                            |
+| `--no-network`                     | With `--json` or `--output`, each case gets `network: [{ phase, script, method, url, status, … }]`, the HTTP requests its scripts made. Uses `node:inspector` with `--runtime node`; with Bun only `fetch` is seen. `--no-network` leaves it out. |
+| `--no-cast`                        | With `--json` or `--output`, each case in the report has `cast: { startAt, chunks: [{ elapse, stream, buffer }] }`, its console output byte by byte. `--no-cast` leaves it out.                                                                   |
+| `-h`, `--help`                     | Show the help and exit.                                                                                                                                                                                                                           |
 
 ### Replaying a report
 

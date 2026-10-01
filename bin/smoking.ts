@@ -55,8 +55,15 @@ if (!parsedOk) {
   process.exit(1);
 }
 
-const { dependencies, runtime, file, json, capture, output } = parsed!;
-const report = await runDonlyFile(fileURLToPath(file), { dependencies, runtime, json, capture });
+const { dependencies, runtime, file, json, capture, profile, network, output } = parsed!;
+const report = await runDonlyFile(fileURLToPath(file), {
+  dependencies,
+  runtime,
+  json,
+  capture,
+  profile,
+  network,
+});
 const reportJson = JSON.stringify(report, null, 2) + "\n";
 
 if (output !== undefined) {
@@ -72,5 +79,6 @@ if (output !== undefined) {
     process.exit(1);
   }
 }
-if (json) process.stdout.write(reportJson);
+// Wait for the flush: a large report (profiles) is cut off by process.exit otherwise.
+if (json) await new Promise((done) => process.stdout.write(reportJson, done));
 process.exit(report.ok ? 0 : 1);

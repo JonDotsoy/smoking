@@ -38,15 +38,70 @@ type CaseResult = {
   ok: boolean;
   error?: string;
   cast?: Capture;
+  profiles?: ScriptProfile[];
+  network?: NetworkRequest[];
 };
 ```
 
-| Field   | Description                                                     |
-| ------- | --------------------------------------------------------------- |
-| `name`  | Name of the case                                                |
-| `ok`    | `true` when the case passed                                     |
-| `error` | Error message. Only present on failed cases                     |
-| `cast`  | Console output of the case's scripts. Left out with `--no-cast` |
+| Field      | Description                                                           |
+| ---------- | --------------------------------------------------------------------- |
+| `name`     | Name of the case                                                      |
+| `ok`       | `true` when the case passed                                           |
+| `error`    | Error message. Only present on failed cases                           |
+| `cast`     | Console output of the case's scripts. Left out with `--no-cast`       |
+| `network`  | HTTP requests the case's scripts made. Left out with `--no-network`   |
+| `profiles` | CPU profile of each script the case ran. Left out with `--no-profile` |
+
+## Profile
+
+```ts
+type ScriptProfile = {
+  phase: "setup" | "run" | "teardown";
+  script: string;
+  profile: unknown;
+};
+```
+
+| Field     | Description                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `phase`   | Which script of the case was profiled                                                                                    |
+| `script`  | Path of the script as it was run                                                                                         |
+| `profile` | V8 CPU profile (`.cpuprofile`) written by `bun`/`node --cpu-prof`; open it in Chrome DevTools or speedscope as a `.json` |
+
+## Network
+
+```ts
+type NetworkRequest = {
+  phase: "setup" | "run" | "teardown";
+  script: string;
+  method: string;
+  url: string;
+  requestHeaders: Record<string, string>;
+  postData?: string;
+  startedAt?: number;
+  duration?: number;
+  status?: number;
+  statusText?: string;
+  mimeType?: string;
+  responseHeaders?: Record<string, string>;
+  error?: string;
+};
+```
+
+| Field                                                 | Description                                                                  |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `phase`, `script`                                     | Which script of the case made the request (as in `profiles`)                 |
+| `method`, `url`                                       | The request                                                                  |
+| `requestHeaders`                                      | Request headers                                                              |
+| `postData`                                            | Request body. Only with `--runtime bun`: Node's inspector does not report it |
+| `startedAt`                                           | Epoch ms when the request started                                            |
+| `duration`                                            | Ms from the start of the request until the response finished                 |
+| `status`, `statusText`, `mimeType`, `responseHeaders` | The response, when there was one                                             |
+| `error`                                               | Failure message, when the request failed                                     |
+
+With `--runtime node` the requests come from `node:inspector` (its `Network`
+domain, so `http`, `https` and `fetch`); Bun has no such domain, so with
+`--runtime bun` `fetch` is wrapped and only `fetch` calls are recorded.
 
 ## Cast
 
@@ -94,6 +149,8 @@ meaning, is a major one. Add a line to the changelog with every change.
 
 ## Changelog
 
-| Version | Date       | Change                                                                            |
-| ------- | ---------- | --------------------------------------------------------------------------------- |
-| 1.0.0   | 2026-10-01 | First documented version: `file`, `runtime`, `ok`, `summary`, `cases` with `cast` |
+| Version | Date       | Change                                                                             |
+| ------- | ---------- | ---------------------------------------------------------------------------------- |
+| 1.0.0   | 2026-10-01 | First documented version: `file`, `runtime`, `ok`, `summary`, `cases` with `cast`  |
+| 1.1.0   | 2026-10-01 | `profiles` on cases, recorded by default in a report, left out with `--no-profile` |
+| 1.2.0   | 2026-10-01 | `network` on cases, recorded by default in a report, left out with `--no-network`  |

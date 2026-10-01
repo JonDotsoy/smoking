@@ -41,7 +41,7 @@ test("the report file saved with --output matches its snapshot", async () => {
   const dir = await mkdtemp(join(tmpdir(), "smoking-report-"));
   const output = join(dir, "nested", "report.json");
   const [ok, error, report] = await result(async () => {
-    await runDonly(CASES, (file) => ["--output", output, file]);
+    await runDonly(CASES, (file) => ["--output", output, "--no-profile", "--no-network", file]);
     return JSON.parse(await Bun.file(output).text());
   });
   await rm(dir, { recursive: true, force: true });
