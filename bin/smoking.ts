@@ -78,5 +78,6 @@ if (output !== undefined) {
     process.exit(1);
   }
 }
-if (json) process.stdout.write(reportJson);
+// Wait for the flush: a large report (profiles) is cut off by process.exit otherwise.
+if (json) await new Promise((done) => process.stdout.write(reportJson, done));
 process.exit(report.ok ? 0 : 1);

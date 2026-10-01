@@ -35,3 +35,24 @@ test("without --profile the report has no profiles", async () => {
 
   expect(JSON.parse(stdout).cases[0].profiles).toBeUndefined();
 });
+
+// A profile's samples and timings change on every run, so the snapshot keeps
+// only its stable shape: which scripts were profiled and what a profile holds.
+const shapeOf = ({ phase, script, profile }: Profile & { profile: Record<string, unknown> }) => {
+  const nodes = profile.nodes as { callFrame: unknown }[];
+  return {
+    phase,
+    script: script.replace(/^.*[\\/]/, ""),
+    profileKeys: Object.keys(profile),
+    root: nodes[0]!.callFrame,
+    samples: Array.isArray(profile.samples),
+    timeDeltas: Array.isArray(profile.timeDeltas),
+  };
+};
+
+test("snapshot of the shape of the profiles in a report", async () => {
+  const { stdout } = await runDonly(CASES, (file) => ["--json", "--profile", file]);
+
+  const profiles = JSON.parse(stdout).cases[0].profiles;
+  expect(profiles.map(shapeOf)).toMatchSnapshot();
+});

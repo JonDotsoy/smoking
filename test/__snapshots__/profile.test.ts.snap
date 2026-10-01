@@ -1,0 +1,46 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`snapshot of the shape of the profiles in a report 1`] = `
+[
+  {
+    "phase": "setup",
+    "profileKeys": [
+      "nodes",
+      "startTime",
+      "endTime",
+      "samples",
+      "timeDeltas",
+    ],
+    "root": {
+      "columnNumber": -1,
+      "functionName": "(root)",
+      "lineNumber": -1,
+      "scriptId": "0",
+      "url": "",
+    },
+    "samples": true,
+    "script": "case-0-setup-0.ts",
+    "timeDeltas": true,
+  },
+  {
+    "phase": "run",
+    "profileKeys": [
+      "nodes",
+      "startTime",
+      "endTime",
+      "samples",
+      "timeDeltas",
+    ],
+    "root": {
+      "columnNumber": -1,
+      "functionName": "(root)",
+      "lineNumber": -1,
+      "scriptId": "0",
+      "url": "",
+    },
+    "samples": true,
+    "script": "case-0.ts",
+    "timeDeltas": true,
+  },
+]
+`;
