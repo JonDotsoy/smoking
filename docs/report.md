@@ -49,7 +49,7 @@ type CaseResult = {
 | `ok`       | `true` when the case passed                                           |
 | `error`    | Error message. Only present on failed cases                           |
 | `cast`     | Console output of the case's scripts. Left out with `--no-cast`       |
-| `network`  | HTTP requests the case's scripts made. Only present with `--network`  |
+| `network`  | HTTP requests the case's scripts made. Left out with `--no-network`   |
 | `profiles` | CPU profile of each script the case ran. Left out with `--no-profile` |
 
 ## Profile
