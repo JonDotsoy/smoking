@@ -53,6 +53,14 @@ byte by byte and with its original timing (each case is announced with a
 `▶ <name>` line on stderr). It needs a report with a cast, so it won't work on
 one saved with `--no-cast`.
 
+### Replaying in the browser
+
+`docs/player.html` is a standalone page (no dependencies) that plays a report in
+a terminal with a time bar. Open it, then drop or pick the report's JSON (or
+serve it and use `player.html?report=report.json`). It processes the whole cast
+up front, one terminal state per chunk, so you can scrub, pause and change the
+speed. Space plays/pauses, ←/→ jump 1 s. Cols/rows can be adjusted.
+
 ## Example
 
 `examples/basic.donly`:
