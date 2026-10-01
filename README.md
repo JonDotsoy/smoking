@@ -16,23 +16,39 @@ isolated temporary directory and prints `✔` or `✘` for each one (or a JSON r
 ## Usage
 
 ```sh
-bunx @jondotsoy/smoking [options] <file.donly>
+bunx @jondotsoy/smoking run [options] <manifest.donly>
 # or
-npx @jondotsoy/smoking [options] <file.donly>
+npx @jondotsoy/smoking run [options] <manifest.donly>
 ```
+
+`run` is optional (`smoking <manifest.donly>` does the same), but it is the safe
+form for a manifest named like a command, e.g. `smoking run play`.
 
 Running it without a file, or with `--help`, prints the full reference
 (directives, options, exit codes and a runnable example).
 
 ### Options
 
-| Option                             | Description                                                                                                                                |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--dependency <package>[@version]` | Install an extra package, as if the file started with a `dependency <package>` line. Repeatable: `--dependency lodash --dependency react`. |
-| `--runtime <bun\|node>`            | Executable that runs each script. Default: `bun`. With `node`, scripts run as ES modules; `tsx`/`jsx` scripts are not supported.           |
-| `--json`                           | Print the report as JSON on stdout. Script output and progress go to stderr, so stdout stays valid JSON.                                   |
-| `--output <path>`                  | Save the report, as JSON, to `<path>` (parent folders are created). Works with or without `--json`.                                        |
-| `-h`, `--help`                     | Show the help and exit.                                                                                                                    |
+| Option                             | Description                                                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dependency <package>[@version]` | Install an extra package, as if the file started with a `dependency <package>` line. Repeatable: `--dependency lodash --dependency react`.                                      |
+| `--runtime <bun\|node>`            | Executable that runs each script. Default: `bun`. With `node`, scripts run as ES modules; `tsx`/`jsx` scripts are not supported.                                                |
+| `--json`                           | Print the report as JSON on stdout. Script output and progress go to stderr, so stdout stays valid JSON.                                                                        |
+| `--output <path>`                  | Save the report, as JSON, to `<path>` (parent folders are created). Works with or without `--json`.                                                                             |
+| `--no-cast`                        | With `--json` or `--output`, each case in the report has `cast: { startAt, chunks: [{ elapse, stream, buffer }] }`, its console output byte by byte. `--no-cast` leaves it out. |
+| `-h`, `--help`                     | Show the help and exit.                                                                                                                                                         |
+
+### Replaying a report
+
+```sh
+bunx @jondotsoy/smoking run --output report.json examples/basic.donly
+bunx @jondotsoy/smoking play report.json
+```
+
+`play` writes the console output recorded in the report back to the terminal,
+byte by byte and with its original timing (each case is announced with a
+`▶ <name>` line on stderr). It needs a report with a cast, so it won't work on
+one saved with `--no-cast`.
 
 ## Example
 
@@ -64,7 +80,7 @@ case reads-config-from-env {
 ```
 
 ```sh
-bunx @jondotsoy/smoking examples/basic.donly
+bunx @jondotsoy/smoking run examples/basic.donly
 ```
 
 ## File format

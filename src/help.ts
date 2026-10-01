@@ -32,8 +32,9 @@ const indent = (text: string, spaces: number): string =>
 export const HELP = `smoking - run test cases described in .donly files
 
 USAGE
-  bunx @jondotsoy/smoking [options] <file.donly>
-  npx  @jondotsoy/smoking [options] <file.donly>
+  bunx @jondotsoy/smoking run [options] <manifest.donly>
+  npx  @jondotsoy/smoking run [options] <manifest.donly>
+  bunx @jondotsoy/smoking play <report file>
 
 OPTIONS
   --dependency <package>[@version]
@@ -64,8 +65,27 @@ OPTIONS
         Works with or without --json; without it the usual output is still
         printed.
 
+  --no-cast
+        With --json or --output the report also records everything each case
+        writes to the console, byte by byte: every case gets
+        cast: { startAt, chunks: [{ elapse, stream, buffer }] } where startAt
+        is epoch ms, elapse is ms since startAt, stream is "stdout" or
+        "stderr" and buffer is the chunk's bytes as numbers (0-255). Pass
+        --no-cast to leave it out. Without a report there is no cast.
+
   -h, --help
         Show this help message and exit.
+
+  "run" is optional: "smoking [options] <manifest.donly>" does the same, but
+  "run" also works for a manifest whose name is a command ("smoking run play").
+
+PLAY
+  smoking play <report file>
+        Replay the console output recorded in a report saved with --output (or
+        redirected from --json): every case's bytes are written back to the
+        terminal with their original timing, stdout to stdout and stderr to
+        stderr, each case preceded by a "▶ <name>" line on stderr. Fails when
+        the report has no cast (it was saved with --no-cast).
 
 DESCRIPTION
   A .donly file (DON, "Directive Object Notation") declares the npm packages a

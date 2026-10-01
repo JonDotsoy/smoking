@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { Writable } from "node:stream";
 import { dirname, extname, join, resolve } from "node:path";
+import { ConsoleCapture, type Capture } from "./capture.ts";
 import { result } from "./utils/result.ts";
 import { parseSpec, type CaseSpec, type ScriptSpec, type Spec } from "./spec.ts";
 
@@ -8,6 +10,8 @@ export type CaseResult = {
   name: string;
   ok: boolean;
   error?: string;
+  // Byte-by-byte console output of the case's scripts, in the report unless `--no-cast`.
+  cast?: Capture;
 };
 
 export type Report = {
@@ -48,6 +52,7 @@ type ScriptContext = {
   runtime: Runtime;
   env: Record<string, string>;
   json: boolean;
+  capture?: ConsoleCapture;
 };
 
 // Runs a `run`/`setup`/`teardown` script, given inline or as a path to a
@@ -57,7 +62,7 @@ const runScript = async (
   source: ScriptSpec,
   kind: string,
   fileStem: string,
-  { baseDir, workDir, runtime, env, json }: ScriptContext,
+  { baseDir, workDir, runtime, env, json, capture }: ScriptContext,
 ): Promise<string | undefined> => {
   let scriptPath: string;
   let ext: string;
@@ -86,13 +91,37 @@ const runScript = async (
   const proc = Bun.spawn(runtime === "node" ? ["node", scriptPath] : ["bun", "run", scriptPath], {
     cwd: workDir,
     env,
-    stdout: childStdout(json),
+    stdout: capture ? "pipe" : childStdout(json),
     stderr: "pipe",
   });
-  const stderr = await new Response(proc.stderr).text();
+  const stdoutDestination = json ? process.stderr : process.stdout;
+  const [stderr] = await Promise.all([
+    capture
+      ? capturedStderr(capture, proc.stderr)
+      : new Response(proc.stderr).text().then((text) => {
+          if (text) process.stderr.write(text);
+          return text;
+        }),
+    capture?.pipe(proc.stdout as ReadableStream<Uint8Array>, "stdout", stdoutDestination),
+  ]);
   const exitCode = await proc.exited;
-  if (stderr) process.stderr.write(stderr);
   return exitCode === 0 ? undefined : stderr.trim() || `exit code ${exitCode}`;
+};
+
+// Captures stderr while forwarding it, and resolves to its text.
+const capturedStderr = async (
+  capture: ConsoleCapture,
+  source: ReadableStream<Uint8Array>,
+): Promise<string> => {
+  const parts: Buffer[] = [];
+  const tap = new Writable({
+    write(chunk: Buffer, _encoding, callback) {
+      parts.push(chunk);
+      process.stderr.write(chunk, callback);
+    },
+  });
+  await capture.pipe(source, "stderr", tap);
+  return Buffer.concat(parts).toString();
 };
 
 const writeCaseFiles = async (spec: CaseSpec, workDir: string): Promise<void> => {
@@ -106,6 +135,7 @@ const runCase = async (
   workDir: string,
   runtime: Runtime,
   json: boolean,
+  capture?: ConsoleCapture,
 ): Promise<CaseResult> => {
   const name = spec.name ?? `case ${index + 1}`;
 
@@ -129,7 +159,7 @@ const runCase = async (
     return { name, ok: false, error: "case has no `run` directive" };
   }
 
-  const context: ScriptContext = { baseDir, workDir, runtime, env, json };
+  const context: ScriptContext = { baseDir, workDir, runtime, env, json, capture };
   const setups = spec.setups;
   const teardowns = spec.teardowns;
 
@@ -156,7 +186,10 @@ const runCase = async (
     if (teardownError) error ??= `teardown failed: ${teardownError}`;
   }
 
-  return error === undefined ? { name, ok: true } : { name, ok: false, error };
+  const captured = capture ? { cast: capture.toJSON() } : {};
+  return error === undefined
+    ? { name, ok: true, ...captured }
+    : { name, ok: false, error, ...captured };
 };
 
 export type Runtime = "bun" | "node";
@@ -172,11 +205,13 @@ export type RunOptions = {
   // The caller prints the returned report as JSON on stdout, so nothing else
   // may go there: progress lines and child process output go to stderr.
   json?: boolean;
+  // Record each case's console output byte by byte into its `cast`.
+  capture?: boolean;
 };
 
 export const runDonlyFile = async (
   filePath: string,
-  { dependencies = [], runtime = "bun", json = false }: RunOptions = {},
+  { dependencies = [], runtime = "bun", json = false, capture = false }: RunOptions = {},
 ): Promise<Report> => {
   const spec = parseSpec(filePath, await Bun.file(filePath).text());
 
@@ -185,7 +220,7 @@ export const runDonlyFile = async (
   // caller's own package.json/node_modules.
   const workDir = await mkdtemp(join(tmpdir(), "smoking-run-"));
   const [ok, error, cases] = await result(
-    runInWorkDir({ filePath, spec, workDir, dependencies, runtime, json }),
+    runInWorkDir({ filePath, spec, workDir, dependencies, runtime, json, capture }),
   );
   await rm(workDir, { recursive: true, force: true });
   if (!ok) throw error;
@@ -206,6 +241,7 @@ const runInWorkDir = async ({
   dependencies,
   runtime,
   json,
+  capture,
 }: {
   filePath: string;
   spec: Spec;
@@ -213,6 +249,7 @@ const runInWorkDir = async ({
   dependencies: string[];
   runtime: Runtime;
   json: boolean;
+  capture: boolean;
 }): Promise<CaseResult[]> => {
   if (runtime === "node") {
     // Without this, node warns on stderr about detecting the module type.
@@ -239,6 +276,7 @@ const runInWorkDir = async ({
       workDir,
       runtime,
       json,
+      capture ? new ConsoleCapture() : undefined,
     );
     results.push(caseResult);
     if (json) continue;

@@ -4,10 +4,36 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CliArgsError, CliMainArgs } from "../src/cli-main-args.ts";
 import { HELP } from "../src/help.ts";
+import { play, parsePlayableCases } from "../src/play.ts";
 import { result } from "../src/utils/result.ts";
 import { runDonlyFile } from "../src/run-file.ts";
 
-const [parsedOk, error, parsed] = result(() => new CliMainArgs().parse(process.argv.slice(2)));
+// `smoking run <manifest.donly>` runs a manifest; the bare `smoking <manifest>`
+// form still works, but only `run` is safe for a file named like a command
+// (`smoking run play`).
+const args = process.argv.slice(2);
+const command = args[0] === "run" || args[0] === "play" ? args.shift() : undefined;
+
+if (command === "play") {
+  const reportFile = args[0];
+  if (!reportFile || args.length > 1) {
+    console.error("Usage: smoking play <report file>");
+    process.exit(1);
+  }
+  const [playOk, playError] = await result(async () => {
+    const text = await Bun.file(reportFile).text();
+    await play(parsePlayableCases(text));
+  });
+  if (!playOk) {
+    console.error(
+      `Could not play ${reportFile}: ${playError instanceof Error ? playError.message : playError}`,
+    );
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+const [parsedOk, error, parsed] = result(() => new CliMainArgs().parse(args));
 if (!parsedOk) {
   if (!(error instanceof CliArgsError)) throw error;
   if (error.kind === "help") {
@@ -23,8 +49,8 @@ if (!parsedOk) {
   process.exit(1);
 }
 
-const { dependencies, runtime, file, json, output } = parsed!;
-const report = await runDonlyFile(fileURLToPath(file), { dependencies, runtime, json });
+const { dependencies, runtime, file, json, capture, output } = parsed!;
+const report = await runDonlyFile(fileURLToPath(file), { dependencies, runtime, json, capture });
 const reportJson = JSON.stringify(report, null, 2) + "\n";
 
 if (output !== undefined) {
