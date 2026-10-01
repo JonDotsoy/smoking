@@ -1,6 +1,6 @@
 {
   "name": "@jondotsoy/smoking",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Run test cases described in .donly files (DON) with Bun or Node",
   "repository": {
     "type": "git",
