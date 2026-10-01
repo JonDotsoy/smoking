@@ -1,0 +1,9 @@
+case add dir {
+  add docs/
+  run <<<ts
+    import { existsSync, readFileSync } from "node:fs"
+    if (readFileSync("./docs/guide.md", "utf8").trim() !== "# guide") throw new Error("guide")
+    if (readFileSync("./docs/nested.txt", "utf8").trim() !== "nested") throw new Error("nested")
+    if (existsSync("./file.json")) throw new Error("file.json must not be copied")
+    console.log("dir added")
+}

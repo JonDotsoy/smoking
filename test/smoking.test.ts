@@ -57,6 +57,22 @@ describe("smoking CLI", () => {
     expect(stdout).toContain("added = hello from src");
   });
 
+  test.each([
+    ["a single file (`add file.json`)", "file.donly", ["file added"]],
+    ["a folder (`add docs/`)", "dir.donly", ["dir added"]],
+    [
+      "an ambiguous path that is a file or a directory (`add path`)",
+      "ambiguous.donly",
+      ["file: plain file", "dir: inside dir"],
+    ],
+    ["a nested relative path (`add foo/tar/biz`)", "relative.donly", ["relative added"]],
+  ])("`add` copies %s", (_label, fixture, expected) => {
+    const { exitCode, stdout } = runCliWithArgs([join(FIXTURES_DIR, "add-directive", fixture)]);
+
+    expect(exitCode).toBe(0);
+    for (const line of expected) expect(stdout).toContain(line);
+  });
+
   test("`add` fails the case when the path does not exist", () => {
     const { exitCode, stdout } = runCli("add-missing.donly");
 

@@ -1,0 +1,15 @@
+case add ambiguous path as a file {
+  add ambiguous/file.txt
+  run <<<ts
+    import { readFileSync, statSync } from "node:fs"
+    if (!statSync("./ambiguous/file.txt").isFile()) throw new Error("not a file")
+    console.log("file:", readFileSync("./ambiguous/file.txt", "utf8").trim())
+}
+
+case add ambiguous path as a directory without trailing slash {
+  add ambiguous/path
+  run <<<ts
+    import { readFileSync, statSync } from "node:fs"
+    if (!statSync("./ambiguous/path").isDirectory()) throw new Error("not a dir")
+    console.log("dir:", readFileSync("./ambiguous/path/inner.txt", "utf8").trim())
+}

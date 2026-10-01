@@ -1,0 +1,8 @@
+case add nested relative path {
+  add foo/tar/biz
+  run <<<ts
+    import { existsSync, readFileSync } from "node:fs"
+    if (readFileSync("./foo/tar/biz/leaf.txt", "utf8").trim() !== "deep") throw new Error("leaf")
+    if (existsSync("./foo/tar/other")) throw new Error("sibling must not be copied")
+    console.log("relative added")
+}

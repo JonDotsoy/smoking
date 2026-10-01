@@ -1,0 +1,9 @@
+case add file {
+  add file.json
+  run <<<ts
+    import { existsSync, readFileSync } from "node:fs"
+    const data = JSON.parse(readFileSync("./file.json", "utf8"))
+    if (data.name !== "smoking") throw new Error("unexpected: " + JSON.stringify(data))
+    if (existsSync("./docs")) throw new Error("docs/ must not be copied")
+    console.log("file added")
+}
