@@ -7,3 +7,5 @@
 - Verified in Chromium with a real report and a synthetic cast (colors, `\r`, stderr, UTF-8).
 
 - [x] Add `smoking play --ui <report>`: serve the player and the report on localhost (`src/play-ui.ts`), help, README and tests
+
+- [x] Browser test for `play --ui` with Playwright (`test/play-ui.browser.test.ts`; skipped without Chromium)
