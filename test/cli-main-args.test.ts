@@ -21,11 +21,13 @@ describe("CliMainArgs", () => {
     expect(errorOf("--no-cast=1", "cases.donly").kind).toBe("invalid");
   });
 
-  test("records profiles only with --profile and a report", () => {
-    expect(parse("--json", "cases.donly").profile).toBe(false);
-    expect(parse("--profile", "cases.donly").profile).toBe(false);
+  test("records profiles when a report is requested, unless --no-profile", () => {
+    expect(parse("cases.donly").profile).toBe(false);
+    expect(parse("--json", "cases.donly").profile).toBe(true);
+    expect(parse("--output", "r.json", "cases.donly").profile).toBe(true);
     expect(parse("--json", "--profile", "cases.donly").profile).toBe(true);
-    expect(errorOf("--profile=1", "cases.donly").kind).toBe("invalid");
+    expect(parse("--json", "--no-profile", "cases.donly").profile).toBe(false);
+    expect(errorOf("--no-profile=1", "cases.donly").kind).toBe("invalid");
   });
 
   test("records requests only with --network and a report", () => {

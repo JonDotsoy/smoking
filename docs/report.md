@@ -43,14 +43,14 @@ type CaseResult = {
 };
 ```
 
-| Field      | Description                                                            |
-| ---------- | ---------------------------------------------------------------------- |
-| `name`     | Name of the case                                                       |
-| `ok`       | `true` when the case passed                                            |
-| `error`    | Error message. Only present on failed cases                            |
-| `cast`     | Console output of the case's scripts. Left out with `--no-cast`        |
-| `network`  | HTTP requests the case's scripts made. Only present with `--network`   |
-| `profiles` | CPU profile of each script the case ran. Only present with `--profile` |
+| Field      | Description                                                           |
+| ---------- | --------------------------------------------------------------------- |
+| `name`     | Name of the case                                                      |
+| `ok`       | `true` when the case passed                                           |
+| `error`    | Error message. Only present on failed cases                           |
+| `cast`     | Console output of the case's scripts. Left out with `--no-cast`       |
+| `network`  | HTTP requests the case's scripts made. Only present with `--network`  |
+| `profiles` | CPU profile of each script the case ran. Left out with `--no-profile` |
 
 ## Profile
 
@@ -149,8 +149,8 @@ meaning, is a major one. Add a line to the changelog with every change.
 
 ## Changelog
 
-| Version | Date       | Change                                                                            |
-| ------- | ---------- | --------------------------------------------------------------------------------- |
-| 1.0.0   | 2026-10-01 | First documented version: `file`, `runtime`, `ok`, `summary`, `cases` with `cast` |
-| 1.1.0   | 2026-10-01 | `profiles` on cases, recorded with `--profile`                                    |
-| 1.2.0   | 2026-10-01 | `network` on cases, recorded with `--network`                                     |
+| Version | Date       | Change                                                                             |
+| ------- | ---------- | ---------------------------------------------------------------------------------- |
+| 1.0.0   | 2026-10-01 | First documented version: `file`, `runtime`, `ok`, `summary`, `cases` with `cast`  |
+| 1.1.0   | 2026-10-01 | `profiles` on cases, recorded by default in a report, left out with `--no-profile` |
+| 1.2.0   | 2026-10-01 | `network` on cases, recorded with `--network`                                      |

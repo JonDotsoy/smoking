@@ -73,13 +73,13 @@ OPTIONS
         "stderr" and buffer is the chunk's bytes as numbers (0-255). Pass
         --no-cast to leave it out. Without a report there is no cast.
 
-  --profile
-        Run every script with --cpu-prof (Bun and Node) and record the V8 CPU
-        profiles in the report: each case gets
+  --no-profile
+        With --json or --output the report also records a CPU profile of every
+        script: they run with --cpu-prof (Bun and Node) and each case gets
         profiles: [{ phase, script, profile }] where phase is "setup", "run"
         or "teardown" and profile is the .cpuprofile JSON (open it in Chrome
-        DevTools or speedscope). Needs --json or --output; profiles are large,
-        so it is off by default.
+        DevTools or speedscope). Pass --no-profile to leave it out, as the
+        profiles make the report large. Without a report there is no profile.
 
   --network
         Record the HTTP requests each script makes: every case gets

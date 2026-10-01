@@ -10,7 +10,8 @@ export type CliMainArgsResult = {
   // Record each case's console output byte by byte into the report: on when
   // a report is requested (--json or --output), off with --no-cast.
   capture: boolean;
-  // Record a CPU profile of each script into the report (--profile).
+  // Record a CPU profile of each script into the report: on when a report is
+  // requested (--json or --output), off with --no-profile.
   profile: boolean;
   // Record the HTTP requests of each script into the report (--network).
   network: boolean;
@@ -41,7 +42,7 @@ export class CliMainArgs {
     let runtime: Runtime = "bun";
     let json = false;
     let noCast = false;
-    let profile = false;
+    let noProfile = false;
     let network = false;
     let output: URL | undefined;
 
@@ -64,11 +65,12 @@ export class CliMainArgs {
           throw new CliArgsError("Option --no-cast does not take a value", "invalid");
         }
         noCast = true;
-      } else if (name === "--profile") {
+      } else if (name === "--profile" || name === "--no-profile") {
         if (inlineValue !== undefined) {
-          throw new CliArgsError("Option --profile does not take a value", "invalid");
+          throw new CliArgsError(`Option ${name} does not take a value`, "invalid");
         }
-        profile = true;
+        // --profile is the default with a report; it is kept so scripts that pass it still work.
+        noProfile = name === "--no-profile";
       } else if (name === "--network") {
         if (inlineValue !== undefined) {
           throw new CliArgsError("Option --network does not take a value", "invalid");
@@ -93,7 +95,7 @@ export class CliMainArgs {
       json,
       // The cast only exists in a report, so it needs --json or --output.
       // Like the cast, profiles only exist in a report.
-      profile: profile && (json || output !== undefined),
+      profile: !noProfile && (json || output !== undefined),
       // Like the cast, requests only exist in a report.
       network: network && (json || output !== undefined),
       capture: !noCast && (json || output !== undefined),

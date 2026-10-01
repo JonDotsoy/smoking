@@ -17,7 +17,6 @@ for (const runtime of ["bun", "node"]) {
   test(`--profile records a CPU profile of each script (${runtime})`, async () => {
     const { exitCode, stdout } = await runDonly(CASES, (file) => [
       "--json",
-      "--profile",
       "--runtime",
       runtime,
       file,
@@ -30,8 +29,11 @@ for (const runtime of ["bun", "node"]) {
   });
 }
 
-test("without --profile the report has no profiles", async () => {
-  const { stdout } = await runDonly(CASES, (file) => ["--json", file]);
+test("a report has profiles by default, and --no-profile leaves them out", async () => {
+  const withProfile = await runDonly(CASES, (file) => ["--json", file]);
+  expect(JSON.parse(withProfile.stdout).cases[0].profiles).toHaveLength(2);
+
+  const { stdout } = await runDonly(CASES, (file) => ["--json", "--no-profile", file]);
 
   expect(JSON.parse(stdout).cases[0].profiles).toBeUndefined();
 });
@@ -51,7 +53,7 @@ const shapeOf = ({ phase, script, profile }: Profile & { profile: Record<string,
 };
 
 test("snapshot of the shape of the profiles in a report", async () => {
-  const { stdout } = await runDonly(CASES, (file) => ["--json", "--profile", file]);
+  const { stdout } = await runDonly(CASES, (file) => ["--json", file]);
 
   const profiles = JSON.parse(stdout).cases[0].profiles;
   expect(profiles.map(shapeOf)).toMatchSnapshot();
@@ -102,13 +104,7 @@ const hottestStack = ({
 
 for (const runtime of ["bun", "node"]) {
   test(`snapshot of the call stack of nested functions doing math (${runtime})`, async () => {
-    const { stdout } = await runDonly(NESTED, (file) => [
-      "--json",
-      "--profile",
-      "--runtime",
-      runtime,
-      file,
-    ]);
+    const { stdout } = await runDonly(NESTED, (file) => ["--json", "--runtime", runtime, file]);
 
     const [run] = JSON.parse(stdout).cases[0].profiles;
     expect(hottestStack(run)).toMatchSnapshot();
