@@ -1,0 +1,11 @@
+case basic {
+  file ./greeting.txt <<<txt
+    hello
+  run <<<ts
+    import { readFileSync } from "node:fs"
+
+    const greeting = readFileSync("./greeting.txt", "utf8").trim()
+    if (greeting !== "hello") throw new Error("unexpected greeting: " + greeting)
+
+    console.log("basic case works")
+}

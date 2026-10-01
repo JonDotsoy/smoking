@@ -1,0 +1,11 @@
+case lifecycle {
+  env FOO tar
+  setup <<<ts
+    console.log("setup: preparing")
+  run <<<ts
+    if (process.env.FOO !== "tar") throw new Error("FOO should be tar")
+
+    console.log("run: env is available")
+  teardown <<<ts
+    console.log("teardown: cleaning up")
+}
