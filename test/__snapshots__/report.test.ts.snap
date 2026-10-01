@@ -1,0 +1,247 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`report.json with its profile and network matches its snapshot (bun) 1`] = `
+{
+  "cases": [
+    {
+      "cast": {
+        "chunks": [
+          {
+            "buffer": [
+              50,
+              49,
+              57,
+              48,
+              56,
+              57,
+              48,
+              49,
+              55,
+              53,
+              50,
+              52,
+              46,
+              52,
+              52,
+              53,
+              51,
+              55,
+              10,
+            ],
+            "elapse": "<elapse>",
+            "stream": "stdout",
+          },
+        ],
+        "startAt": "<startAt>",
+      },
+      "name": "everything",
+      "network": [
+        {
+          "duration": "<duration>",
+          "method": "POST",
+          "mimeType": "text/plain",
+          "phase": "run",
+          "postData": "hello",
+          "requestHeaders": {
+            "x-case": "post",
+          },
+          "responseHeaders": {
+            "content-length": "4",
+            "content-type": "text/plain",
+            "date": "<date>",
+            "x-smoking": "pong",
+          },
+          "script": "case-0.ts",
+          "startedAt": "<startedAt>",
+          "status": 200,
+          "statusText": "OK",
+          "url": "http://localhost:<port>/ping?n=1",
+        },
+        {
+          "duration": "<duration>",
+          "method": "GET",
+          "mimeType": "text/plain",
+          "phase": "run",
+          "requestHeaders": {
+            "x-case": "get",
+          },
+          "responseHeaders": {
+            "content-length": "4",
+            "content-type": "text/plain",
+            "date": "<date>",
+            "x-smoking": "pong",
+          },
+          "script": "case-0.ts",
+          "startedAt": "<startedAt>",
+          "status": 200,
+          "statusText": "OK",
+          "url": "http://localhost:<port>/ping?n=1",
+        },
+      ],
+      "ok": true,
+      "profiles": [
+        {
+          "hottestStack": [
+            "outer",
+            "inner",
+          ],
+          "phase": "run",
+          "profileKeys": [
+            "nodes",
+            "startTime",
+            "endTime",
+            "samples",
+            "timeDeltas",
+          ],
+          "root": {
+            "columnNumber": -1,
+            "functionName": "(root)",
+            "lineNumber": -1,
+            "scriptId": "0",
+            "url": "",
+          },
+          "script": "case-0.ts",
+        },
+      ],
+    },
+  ],
+  "file": "<file>",
+  "ok": true,
+  "runtime": "bun",
+  "summary": {
+    "failed": 0,
+    "passed": 1,
+    "total": 1,
+  },
+}
+`;
+
+exports[`report.json with its profile and network matches its snapshot (node) 1`] = `
+{
+  "cases": [
+    {
+      "cast": {
+        "chunks": [
+          {
+            "buffer": [
+              50,
+              49,
+              57,
+              48,
+              56,
+              57,
+              48,
+              49,
+              55,
+              53,
+              50,
+              52,
+              46,
+              52,
+              52,
+              53,
+              51,
+              55,
+              10,
+            ],
+            "elapse": "<elapse>",
+            "stream": "stdout",
+          },
+        ],
+        "startAt": "<startAt>",
+      },
+      "name": "everything",
+      "network": [
+        {
+          "duration": "<duration>",
+          "method": "POST",
+          "mimeType": "text/plain",
+          "phase": "run",
+          "requestHeaders": {
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate",
+            "accept-language": "*",
+            "content-type": "text/plain;charset=UTF-8",
+            "sec-fetch-mode": "cors",
+            "user-agent": "node",
+            "x-case": "post",
+          },
+          "responseHeaders": {
+            "Connection": "keep-alive",
+            "Content-Length": "4",
+            "Date": "<Date>",
+            "Keep-Alive": "<Keep-Alive>",
+            "content-type": "text/plain",
+            "x-smoking": "pong",
+          },
+          "script": "case-0.ts",
+          "startedAt": "<startedAt>",
+          "status": 200,
+          "statusText": "OK",
+          "url": "http://localhost:<port>/ping?n=1",
+        },
+        {
+          "duration": "<duration>",
+          "method": "GET",
+          "mimeType": "text/plain",
+          "phase": "run",
+          "requestHeaders": {
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "user-agent": "node",
+            "x-case": "get",
+          },
+          "responseHeaders": {
+            "Connection": "keep-alive",
+            "Content-Length": "4",
+            "Date": "<Date>",
+            "Keep-Alive": "<Keep-Alive>",
+            "content-type": "text/plain",
+            "x-smoking": "pong",
+          },
+          "script": "case-0.ts",
+          "startedAt": "<startedAt>",
+          "status": 200,
+          "statusText": "OK",
+          "url": "http://localhost:<port>/ping?n=1",
+        },
+      ],
+      "ok": true,
+      "profiles": [
+        {
+          "hottestStack": [
+            "outer",
+            "inner",
+          ],
+          "phase": "run",
+          "profileKeys": [
+            "nodes",
+            "startTime",
+            "endTime",
+            "samples",
+            "timeDeltas",
+          ],
+          "root": {
+            "columnNumber": -1,
+            "functionName": "(root)",
+            "lineNumber": -1,
+            "scriptId": "0",
+            "url": "",
+          },
+          "script": "case-0.ts",
+        },
+      ],
+    },
+  ],
+  "file": "<file>",
+  "ok": true,
+  "runtime": "node",
+  "summary": {
+    "failed": 0,
+    "passed": 1,
+    "total": 1,
+  },
+}
+`;

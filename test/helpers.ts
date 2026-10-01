@@ -62,3 +62,33 @@ export const runDonly = async (
   if (!ok) throw error;
   return run!;
 };
+
+export type ProfileNode = {
+  id: number;
+  callFrame: { functionName: string; url: string };
+  hitCount: number;
+  children?: number[];
+};
+
+// Names of the script's own functions on the stack where most samples landed,
+// outermost first (the runtimes' internal frames are left out).
+export const hottestStack = ({
+  script,
+  profile,
+}: {
+  script: string;
+  profile: { nodes: ProfileNode[] };
+}) => {
+  const parent = new Map<number, ProfileNode>();
+  for (const node of profile.nodes)
+    for (const child of node.children ?? []) parent.set(child, node);
+  const own = (node: ProfileNode) => node.callFrame.url.endsWith(script.replace(/^.*[\\/]/, ""));
+  const hottest = profile.nodes.filter(own).reduce((a, b) => (b.hitCount > a.hitCount ? b : a));
+  const stack: string[] = [];
+  for (let node: ProfileNode | undefined = hottest; node; node = parent.get(node.id)) {
+    if (own(node) && node.callFrame.functionName && node.callFrame.functionName !== "(module)") {
+      stack.unshift(node.callFrame.functionName);
+    }
+  }
+  return stack;
+};
