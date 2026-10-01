@@ -51,7 +51,15 @@ describe("SmokingFile", () => {
     expect(last?.run?.text.length).toBeGreaterThan(0);
   });
 
-  test("a malformed script throws", async () => {
-    expect(SmokingFile.parse("/tmp/a.donly", "case { run }")).rejects.toThrow("run");
+  test("a malformed script carries its error", async () => {
+    const file = await SmokingFile.parse("/tmp/a.donly", "case { run }");
+
+    expect(file.cases[0]?.run?.error).toContain("run");
+  });
+
+  test("a missing script file carries its error", async () => {
+    const file = await SmokingFile.parse("/tmp/a.donly", "case { run ./nope.ts }");
+
+    expect(file.cases[0]?.run?.error).toContain("run file not found");
   });
 });
