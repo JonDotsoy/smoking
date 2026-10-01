@@ -32,7 +32,6 @@ for (const runtime of ["bun", "node"]) {
   test(`--network records the requests of each case (${runtime})`, async () => {
     const { exitCode, stdout } = await runDonly(CASES, (file) => [
       "--json",
-      "--network",
       "--runtime",
       runtime,
       file,
@@ -57,8 +56,11 @@ for (const runtime of ["bun", "node"]) {
   });
 }
 
-test("without --network the report has no network", async () => {
-  const { stdout } = await runDonly(CASES, (file) => ["--json", file]);
+test("a report has the network by default, and --no-network leaves it out", async () => {
+  const withNetwork = await runDonly(CASES, (file) => ["--json", file]);
+  expect(JSON.parse(withNetwork.stdout).cases[0].network).toHaveLength(2);
+
+  const { stdout } = await runDonly(CASES, (file) => ["--json", "--no-network", file]);
 
   expect(JSON.parse(stdout).cases[0].network).toBeUndefined();
 });

@@ -13,7 +13,8 @@ export type CliMainArgsResult = {
   // Record a CPU profile of each script into the report: on when a report is
   // requested (--json or --output), off with --no-profile.
   profile: boolean;
-  // Record the HTTP requests of each script into the report (--network).
+  // Record the HTTP requests of each script into the report: on when a report
+  // is requested (--json or --output), off with --no-network.
   network: boolean;
   // Where the JSON report is saved, when --output was given.
   output?: URL;
@@ -43,7 +44,7 @@ export class CliMainArgs {
     let json = false;
     let noCast = false;
     let noProfile = false;
-    let network = false;
+    let noNetwork = false;
     let output: URL | undefined;
 
     for (let i = 0; i < args.length; i++) {
@@ -71,11 +72,12 @@ export class CliMainArgs {
         }
         // --profile is the default with a report; it is kept so scripts that pass it still work.
         noProfile = name === "--no-profile";
-      } else if (name === "--network") {
+      } else if (name === "--network" || name === "--no-network") {
         if (inlineValue !== undefined) {
-          throw new CliArgsError("Option --network does not take a value", "invalid");
+          throw new CliArgsError(`Option ${name} does not take a value`, "invalid");
         }
-        network = true;
+        // --network is the default with a report; it is kept so scripts that pass it still work.
+        noNetwork = name === "--no-network";
       } else if (name === "--output") {
         output = pathToFileURL(resolve(value()));
       } else if (arg.startsWith("-")) {
@@ -97,7 +99,7 @@ export class CliMainArgs {
       // Like the cast, profiles only exist in a report.
       profile: !noProfile && (json || output !== undefined),
       // Like the cast, requests only exist in a report.
-      network: network && (json || output !== undefined),
+      network: !noNetwork && (json || output !== undefined),
       capture: !noCast && (json || output !== undefined),
       ...(output === undefined ? {} : { output }),
     };

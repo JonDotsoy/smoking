@@ -153,4 +153,4 @@ meaning, is a major one. Add a line to the changelog with every change.
 | ------- | ---------- | ---------------------------------------------------------------------------------- |
 | 1.0.0   | 2026-10-01 | First documented version: `file`, `runtime`, `ok`, `summary`, `cases` with `cast`  |
 | 1.1.0   | 2026-10-01 | `profiles` on cases, recorded by default in a report, left out with `--no-profile` |
-| 1.2.0   | 2026-10-01 | `network` on cases, recorded with `--network`                                      |
+| 1.2.0   | 2026-10-01 | `network` on cases, recorded by default in a report, left out with `--no-network`  |

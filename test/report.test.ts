@@ -86,14 +86,7 @@ for (const runtime of ["bun", "node"]) {
     const dir = await mkdtemp(join(tmpdir(), "smoking-report-"));
     const output = join(dir, "report.json");
     const [ok, error, report] = await result(async () => {
-      const run = await runDonly(CASES, (file) => [
-        "--output",
-        output,
-        "--network",
-        "--runtime",
-        runtime,
-        file,
-      ]);
+      const run = await runDonly(CASES, (file) => ["--output", output, "--runtime", runtime, file]);
       expect(run.exitCode).toBe(0);
       return JSON.parse(await Bun.file(output).text());
     });
