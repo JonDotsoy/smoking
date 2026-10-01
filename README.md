@@ -55,11 +55,17 @@ one saved with `--no-cast`.
 
 ### Replaying in the browser
 
-`docs/player.html` is a standalone page (no dependencies) that plays a report in
-a terminal with a time bar. Open it, then drop or pick the report's JSON (or
-serve it and use `player.html?report=report.json`). It processes the whole cast
-up front, one terminal state per chunk, so you can scrub, pause and change the
-speed. Space plays/pauses, ←/→ jump 1 s. Cols/rows can be adjusted.
+```sh
+bunx @jondotsoy/smoking play --ui report.json
+```
+
+`--ui` serves a player on `http://localhost` (the URL is printed; Ctrl+C stops
+it): a terminal with a time bar. It processes the whole cast up front, one
+terminal state per chunk, so you can scrub, pause and change the speed. Space
+plays/pauses, ←/→ jump 1 s. Cols/rows can be adjusted.
+
+The player is also a standalone page, `src/player.html`: open it and drop a
+report on it, or serve it and use `player.html?report=report.json`.
 
 ## Example
 

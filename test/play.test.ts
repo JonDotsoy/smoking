@@ -118,3 +118,37 @@ describe("smoking run", () => {
     expect(run.stdout).toContain("USAGE");
   });
 });
+
+describe("smoking play --ui", () => {
+  const report = JSON.stringify({ cases: [{ name: "a", cast: cast([[1, "stdout", [104]]]) }] });
+
+  test("serves the player and the report", async () => {
+    const { serveReportUI } = await import("../src/play-ui.ts");
+    const server = serveReportUI(report);
+    const [ok, error] = await result(async () => {
+      const home = await fetch(server.url, { redirect: "manual" });
+      expect(home.status).toBe(302);
+      expect(home.headers.get("location")).toBe(`${server.url.origin}/?report=/report.json`);
+
+      const player = await fetch(new URL("/?report=/report.json", server.url));
+      expect(player.headers.get("content-type")).toContain("text/html");
+      expect(await player.text()).toContain("<title>smoking · player</title>");
+
+      expect(await (await fetch(new URL("/report.json", server.url))).text()).toBe(report);
+    });
+    await server.stop(true);
+    if (!ok) throw error;
+  });
+
+  test("rejects a report without a cast before serving", async () => {
+    const { serveReportUI } = await import("../src/play-ui.ts");
+    const [ok] = result(() => serveReportUI("{}"));
+    expect(ok).toBe(false);
+  });
+
+  test("the CLI needs a report file", () => {
+    const run = runCliWithArgs(["play", "--ui"]);
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr).toContain("Usage: smoking play [--ui] <report file>");
+  });
+});

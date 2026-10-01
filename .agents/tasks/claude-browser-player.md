@@ -5,3 +5,5 @@
 
 - The emulator maps LF to CRLF because the recorded bytes come from a pipe, not a TTY.
 - Verified in Chromium with a real report and a synthetic cast (colors, `\r`, stderr, UTF-8).
+
+- [x] Add `smoking play --ui <report>`: serve the player and the report on localhost (`src/play-ui.ts`), help, README and tests
