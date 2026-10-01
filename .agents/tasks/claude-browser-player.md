@@ -9,3 +9,5 @@
 - [x] Add `smoking play --ui <report>`: serve the player and the report on localhost (`src/play-ui.ts`), help, README and tests
 
 - [x] Browser test for `play --ui` with Playwright (`test/play-ui.browser.test.ts`; skipped without Chromium)
+
+- [x] Browser test that records a real script (several console.log/console.error) and plays it

@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
-import { CLI_PATH, REPO_ROOT } from "./helpers.ts";
+import { CLI_PATH, REPO_ROOT, runCliWithArgs } from "./helpers.ts";
 
 // Chromium: $SMOKING_CHROMIUM, the one Playwright installed, or the sandbox's.
 // Without a browser these tests are skipped.
@@ -13,6 +13,40 @@ const chromiumPath = [
   chromium.executablePath(),
   "/opt/pw-browsers/chromium",
 ].find((path) => path && existsSync(path));
+
+// Starts `smoking play --ui <report>` and opens its player in Chromium.
+const openPlayer = async (report: string) => {
+  const server = Bun.spawn(["bun", CLI_PATH, "play", "--ui", report], {
+    cwd: REPO_ROOT,
+    stdout: "ignore",
+    stderr: "pipe",
+  });
+  // The CLI prints "Player at <url> (Ctrl+C to stop)" on stderr.
+  const reader = (server.stderr as ReadableStream<Uint8Array>).getReader();
+  let output = "";
+  while (!/Player at (\S+)/.test(output)) {
+    const { done, value } = await reader.read();
+    if (done) throw new Error(`play --ui exited early:\n${output}`);
+    output += new TextDecoder().decode(value);
+  }
+  const url = /Player at (\S+)/.exec(output)![1]!;
+
+  const browser = await chromium.launch({ executablePath: chromiumPath! });
+  const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
+  await page.goto(url); // `/` redirects to `/?report=/report.json`
+  await page.waitForSelector("#window:not([hidden])");
+  return { server, url, browser, page };
+};
+
+// Browser-side code is passed as strings: the tests don't use the DOM lib types.
+const seekTo = (page: Page, ms: number) =>
+  page.evaluate(`(() => {
+    const input = document.getElementById("seek");
+    input.value = "${ms}";
+    input.dispatchEvent(new Event("input"));
+  })()`);
+const terminalText = async (page: Page) =>
+  (await page.innerText("#term")).replace(/[ \t]+$/gm, "").trimEnd();
 
 const enc = (text: string) => [...new TextEncoder().encode(text)];
 const chunk = (elapse: number, stream: "stdout" | "stderr", text: string) => ({
@@ -46,39 +80,14 @@ describe.skipIf(!chromiumPath)("smoking play --ui (browser)", () => {
   let browser: Browser;
   let page: Page;
 
-  // Browser-side code is passed as strings: the tests don't use the DOM lib types.
-  const seek = (ms: number) =>
-    page.evaluate(`(() => {
-      const input = document.getElementById("seek");
-      input.value = "${ms}";
-      input.dispatchEvent(new Event("input"));
-    })()`);
-  const terminal = async () => (await page.innerText("#term")).replace(/[ \t]+$/gm, "").trimEnd();
+  const seek = (ms: number) => seekTo(page, ms);
+  const terminal = () => terminalText(page);
 
   beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), "smoking-play-ui-"));
     const report = join(dir, "report.json");
     await writeFile(report, JSON.stringify(REPORT));
-
-    server = Bun.spawn(["bun", CLI_PATH, "play", "--ui", report], {
-      cwd: REPO_ROOT,
-      stdout: "ignore",
-      stderr: "pipe",
-    });
-    // The CLI prints "Player at <url> (Ctrl+C to stop)" on stderr.
-    const reader = (server.stderr as ReadableStream<Uint8Array>).getReader();
-    let output = "";
-    while (!/Player at (\S+)/.test(output)) {
-      const { done, value } = await reader.read();
-      if (done) throw new Error(`play --ui exited early:\n${output}`);
-      output += new TextDecoder().decode(value);
-    }
-    url = /Player at (\S+)/.exec(output)![1]!;
-
-    browser = await chromium.launch({ executablePath: chromiumPath! });
-    page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
-    await page.goto(url); // `/` redirects to `/?report=/report.json`
-    await page.waitForSelector("#window:not([hidden])");
+    ({ server, url, browser, page } = await openPlayer(report));
   });
 
   afterAll(async () => {
@@ -141,5 +150,95 @@ describe.skipIf(!chromiumPath)("smoking play --ui (browser)", () => {
   test("the served report is the one it plays", async () => {
     const served = await fetch(new URL("/report.json", url));
     expect(await served.json()).toEqual(REPORT);
+  });
+});
+
+const SCRIPT = `case logs {
+  run <<<ts
+    const pause = () => Bun.sleep(60);
+    console.log("one");
+    await pause();
+    console.error("two (error)");
+    await pause();
+    console.log("three");
+    console.log("four");
+    await pause();
+    console.error("five (error)");
+    await pause();
+    console.log("six");
+}
+`;
+
+describe.skipIf(!chromiumPath)("smoking play --ui with a recorded script (browser)", () => {
+  let dir: string;
+  let server: ReturnType<typeof Bun.spawn>;
+  let browser: Browser;
+  let page: Page;
+  let chunks: { elapse: number; stream: string; buffer: number[] }[];
+
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), "smoking-play-ui-script-"));
+    const donly = join(dir, "logs.donly");
+    const report = join(dir, "report.json");
+    await writeFile(donly, SCRIPT);
+    // Record a real run: the script's console.log/console.error end up in the cast.
+    const run = runCliWithArgs(["--output", report, donly]);
+    if (run.exitCode !== 0) throw new Error(`the script failed:\n${run.stdout}\n${run.stderr}`);
+    chunks = (await Bun.file(report).json()).cases[0].cast.chunks;
+    ({ server, browser, page } = await openPlayer(report));
+  });
+
+  afterAll(async () => {
+    await browser?.close();
+    server?.kill();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const at = (text: string) => chunks.find((c) => String.fromCharCode(...c.buffer).includes(text))!;
+  const when = (text: string) => Math.ceil(at(text).elapse);
+
+  test("the cast keeps every line on its own stream", () => {
+    const lines = chunks.flatMap((c) =>
+      String.fromCharCode(...c.buffer)
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => [c.stream, line]),
+    );
+    expect(lines).toEqual([
+      ["stdout", "one"],
+      ["stderr", "two (error)"],
+      ["stdout", "three"],
+      ["stdout", "four"],
+      ["stderr", "five (error)"],
+      ["stdout", "six"],
+    ]);
+  });
+
+  test("the player shows the lines as they were written, stdout and stderr in order", async () => {
+    expect(await page.innerText("#title")).toContain(`logs · ${chunks.length} chunks`);
+
+    await seekTo(page, 0);
+    expect(await terminalText(page)).toBe("");
+
+    await seekTo(page, when("one"));
+    expect(await terminalText(page)).toBe("one");
+
+    await seekTo(page, when("two"));
+    expect(await terminalText(page)).toBe("one\ntwo (error)");
+
+    await seekTo(page, when("four"));
+    expect(await terminalText(page)).toBe("one\ntwo (error)\nthree\nfour");
+
+    await seekTo(page, when("six"));
+    expect(await terminalText(page)).toBe("one\ntwo (error)\nthree\nfour\nfive (error)\nsix");
+  });
+
+  test("the time bar spans the recording, up to its last chunk", async () => {
+    const last = chunks.at(-1)!.elapse;
+    expect(Number(await page.getAttribute("#seek", "max"))).toBe(last);
+
+    await seekTo(page, last);
+    const seconds = (last / 1000).toFixed(3);
+    expect(await page.innerText("#time")).toBe(`${seconds} / ${seconds} s`);
   });
 });
