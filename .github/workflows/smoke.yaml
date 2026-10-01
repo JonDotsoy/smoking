@@ -1,0 +1,79 @@
+name: Smoke
+
+run-name: Smoke (${{ github.event_name }}, ${{ github.ref_name }})
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pack:
+    name: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build the package
+        run: bun run build
+
+      - name: Pack the package
+        run: npm pack dist/ --pack-destination "$RUNNER_TEMP/pack"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoking-package
+          path: ${{ runner.temp }}/pack/*.tgz
+          if-no-files-found: error
+
+  smoke:
+    name: smoke ${{ matrix.smok }}
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        smok:
+          - basic
+          - lifecycle
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Download the package
+        uses: actions/download-artifact@v4
+        with:
+          name: smoking-package
+          path: ${{ runner.temp }}/pack
+
+      - name: Install the package globally
+        run: |
+          bun add --global "$RUNNER_TEMP"/pack/*.tgz
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+
+      - name: Check the installed command
+        run: |
+          command -v smoking
+          smoking --help
+
+      - name: Run smoks/smok-${{ matrix.smok }}.donly
+        run: smoking run smoks/smok-${{ matrix.smok }}.donly
