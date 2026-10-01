@@ -8,9 +8,15 @@ import { play, parsePlayableCases } from "../src/play.ts";
 import { result } from "../src/utils/result.ts";
 import { runDonlyFile } from "../src/run-file.ts";
 
-if (process.argv[2] === "play") {
-  const reportFile = process.argv[3];
-  if (!reportFile || process.argv.length > 4) {
+// `smoking run <manifest.donly>` runs a manifest; the bare `smoking <manifest>`
+// form still works, but only `run` is safe for a file named like a command
+// (`smoking run play`).
+const args = process.argv.slice(2);
+const command = args[0] === "run" || args[0] === "play" ? args.shift() : undefined;
+
+if (command === "play") {
+  const reportFile = args[0];
+  if (!reportFile || args.length > 1) {
     console.error("Usage: smoking play <report file>");
     process.exit(1);
   }
@@ -27,7 +33,7 @@ if (process.argv[2] === "play") {
   process.exit(0);
 }
 
-const [parsedOk, error, parsed] = result(() => new CliMainArgs().parse(process.argv.slice(2)));
+const [parsedOk, error, parsed] = result(() => new CliMainArgs().parse(args));
 if (!parsedOk) {
   if (!(error instanceof CliArgsError)) throw error;
   if (error.kind === "help") {

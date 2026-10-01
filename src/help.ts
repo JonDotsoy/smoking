@@ -32,8 +32,8 @@ const indent = (text: string, spaces: number): string =>
 export const HELP = `smoking - run test cases described in .donly files
 
 USAGE
-  bunx @jondotsoy/smoking [options] <file.donly>
-  npx  @jondotsoy/smoking [options] <file.donly>
+  bunx @jondotsoy/smoking run [options] <manifest.donly>
+  npx  @jondotsoy/smoking run [options] <manifest.donly>
   bunx @jondotsoy/smoking play <report file>
 
 OPTIONS
@@ -75,6 +75,9 @@ OPTIONS
 
   -h, --help
         Show this help message and exit.
+
+  "run" is optional: "smoking [options] <manifest.donly>" does the same, but
+  "run" also works for a manifest whose name is a command ("smoking run play").
 
 PLAY
   smoking play <report file>

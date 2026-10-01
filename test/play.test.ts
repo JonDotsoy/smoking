@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parsePlayableCases, play } from "../src/play.ts";
 import { result } from "../src/utils/result.ts";
-import { runCliWithArgs } from "./helpers.ts";
+import { runCliWithArgs, runDonly } from "./helpers.ts";
 
 const cast = (chunks: [number, "stdout" | "stderr", number[]][]) => ({
   startAt: 1_700_000_000_000,
@@ -84,5 +84,37 @@ describe("smoking play", () => {
     const missing = runCliWithArgs(["play", "/nonexistent/report.json"]);
     expect(missing.exitCode).toBe(1);
     expect(missing.stderr).toContain("Could not play /nonexistent/report.json");
+  });
+});
+
+describe("smoking run", () => {
+  const CASE = 'case ok {\n  run <<<ts\n    console.log("ran")\n}\n';
+
+  test("runs a manifest, like the bare form", async () => {
+    const run = await runDonly(CASE, (file) => ["run", file]);
+    const bare = await runDonly(CASE);
+
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout).toBe(bare.stdout);
+    expect(run.stdout).toContain("✔ ok");
+  });
+
+  test("runs a manifest named like a command", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "smoking-run-name-"));
+    const [ok, error, run] = await result(async () => {
+      await writeFile(join(dir, "play"), CASE);
+      return runCliWithArgs(["run", join(dir, "play")]);
+    });
+    await rm(dir, { recursive: true, force: true });
+    if (!ok) throw error;
+
+    expect(run!.exitCode).toBe(0);
+    expect(run!.stdout).toContain("✔ ok");
+  });
+
+  test("without a manifest it prints the help", () => {
+    const run = runCliWithArgs(["run"]);
+    expect(run.exitCode).toBe(1);
+    expect(run.stdout).toContain("USAGE");
   });
 });

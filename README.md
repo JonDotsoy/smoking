@@ -16,10 +16,13 @@ isolated temporary directory and prints `✔` or `✘` for each one (or a JSON r
 ## Usage
 
 ```sh
-bunx @jondotsoy/smoking [options] <file.donly>
+bunx @jondotsoy/smoking run [options] <manifest.donly>
 # or
-npx @jondotsoy/smoking [options] <file.donly>
+npx @jondotsoy/smoking run [options] <manifest.donly>
 ```
+
+`run` is optional (`smoking <manifest.donly>` does the same), but it is the safe
+form for a manifest named like a command, e.g. `smoking run play`.
 
 Running it without a file, or with `--help`, prints the full reference
 (directives, options, exit codes and a runnable example).
@@ -38,7 +41,7 @@ Running it without a file, or with `--help`, prints the full reference
 ### Replaying a report
 
 ```sh
-bunx @jondotsoy/smoking --output report.json examples/basic.donly
+bunx @jondotsoy/smoking run --output report.json examples/basic.donly
 bunx @jondotsoy/smoking play report.json
 ```
 
@@ -77,7 +80,7 @@ case reads-config-from-env {
 ```
 
 ```sh
-bunx @jondotsoy/smoking examples/basic.donly
+bunx @jondotsoy/smoking run examples/basic.donly
 ```
 
 ## File format
