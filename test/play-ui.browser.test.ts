@@ -46,12 +46,13 @@ describe.skipIf(!chromiumPath)("smoking play --ui (browser)", () => {
   let browser: Browser;
   let page: Page;
 
+  // Browser-side code is passed as strings: the tests don't use the DOM lib types.
   const seek = (ms: number) =>
-    page.evaluate((value) => {
-      const input = document.getElementById("seek") as HTMLInputElement;
-      input.value = String(value);
+    page.evaluate(`(() => {
+      const input = document.getElementById("seek");
+      input.value = "${ms}";
       input.dispatchEvent(new Event("input"));
-    }, ms);
+    })()`);
   const terminal = async () => (await page.innerText("#term")).replace(/[ \t]+$/gm, "").trimEnd();
 
   beforeAll(async () => {
@@ -111,7 +112,12 @@ describe.skipIf(!chromiumPath)("smoking play --ui (browser)", () => {
   test("renders colors", async () => {
     await seek(1000);
     const color = (text: string) =>
-      page.locator("#term span", { hasText: text }).evaluate((e) => getComputedStyle(e).color);
+      page.evaluate<string>(`(() => {
+        const span = [...document.querySelectorAll("#term span")].find((e) =>
+          e.textContent.includes(${JSON.stringify(text)}),
+        );
+        return getComputedStyle(span).color;
+      })()`);
     expect(await color("Build")).toBe("rgb(13, 188, 121)");
     expect(await color("warn: ñ")).toBe("rgb(205, 49, 49)");
   });
@@ -120,11 +126,9 @@ describe.skipIf(!chromiumPath)("smoking play --ui (browser)", () => {
     await page.selectOption("#speed", "4");
     await seek(0);
     await page.click("#play");
-    await page.waitForFunction(() =>
-      document.getElementById("time")!.textContent!.startsWith("1.000"),
-    );
+    await page.waitForFunction('document.getElementById("time").textContent.startsWith("1.000")');
     expect(await terminal()).toBe("Build starting\nprogress 100%\nwarn: ñ");
-    await page.waitForFunction(() => document.getElementById("play")!.textContent === "▶");
+    await page.waitForFunction('document.getElementById("play").textContent === "▶"');
   });
 
   test("switching the case loads its own cast", async () => {
