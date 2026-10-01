@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Capture } from "../src/capture.ts";
 import { parsePlayableCases, play } from "../src/play.ts";
 import { result } from "../src/utils/result.ts";
 import { runCliWithArgs, runDonly } from "./helpers.ts";
@@ -116,5 +117,66 @@ describe("smoking run", () => {
     const run = runCliWithArgs(["run"]);
     expect(run.exitCode).toBe(1);
     expect(run.stdout).toContain("USAGE");
+  });
+});
+
+describe("smoking play --ui", () => {
+  const report = JSON.stringify({ cases: [{ name: "a", cast: cast([[1, "stdout", [104]]]) }] });
+
+  test("serves the player and the report", async () => {
+    const { serveReportUI } = await import("../src/play-ui.ts");
+    const server = serveReportUI(report);
+    const [ok, error] = await result(async () => {
+      const home = await fetch(server.url, { redirect: "manual" });
+      expect(home.status).toBe(302);
+      expect(home.headers.get("location")).toBe(`${server.url.origin}/?report=/report.json`);
+
+      const player = await fetch(new URL("/?report=/report.json", server.url));
+      expect(player.headers.get("content-type")).toContain("text/html");
+      expect(await player.text()).toContain("<title>smoking · player</title>");
+
+      expect(await (await fetch(new URL("/report.json", server.url))).text()).toBe(report);
+    });
+    await server.stop(true);
+    if (!ok) throw error;
+  });
+
+  test("rejects a report without a cast before serving", async () => {
+    const { serveReportUI } = await import("../src/play-ui.ts");
+    const [ok] = result(() => serveReportUI("{}"));
+    expect(ok).toBe(false);
+  });
+
+  test("the CLI needs a report file", () => {
+    const run = runCliWithArgs(["play", "--ui"]);
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr).toContain("Usage: smoking play [--ui] <report file>");
+  });
+});
+
+describe("colors in the cast", () => {
+  const log = (env: string) => `case c {\n${env}  run <<<ts\n    console.log({ n: 1 })\n}\n`;
+  const castText = async (donly: string) => {
+    const dir = await mkdtemp(join(tmpdir(), "smoking-colors-"));
+    const [ok, error, text] = await result(async () => {
+      const file = join(dir, "c.donly");
+      await writeFile(file, donly);
+      const report = join(dir, "report.json");
+      const run = runCliWithArgs(["--output", report, file]);
+      if (run.exitCode !== 0) throw new Error(run.stderr);
+      const { cases } = (await Bun.file(report).json()) as { cases: { cast: Capture }[] };
+      return cases[0]!.cast.chunks.map((c) => String.fromCharCode(...c.buffer)).join("");
+    });
+    await rm(dir, { recursive: true, force: true });
+    if (!ok) throw error;
+    return text!;
+  };
+
+  test("the output is recorded as is: a pipe gets no colors", async () => {
+    expect(await castText(log(""))).toBe("{\n  n: 1,\n}\n");
+  });
+
+  test("`env FORCE_COLOR 1` records the ANSI colors of console.log", async () => {
+    expect(await castText(log("  env FORCE_COLOR 1\n"))).toContain("\x1b[33m1\x1b[");
   });
 });

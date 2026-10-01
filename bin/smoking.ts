@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { CliArgsError, CliMainArgs } from "../src/cli-main-args.ts";
 import { HELP } from "../src/help.ts";
 import { play, parsePlayableCases } from "../src/play.ts";
+import { serveReportUI } from "../src/play-ui.ts";
 import { result } from "../src/utils/result.ts";
 import { runDonlyFile } from "../src/run-file.ts";
 
@@ -15,14 +16,19 @@ const args = process.argv.slice(2);
 const command = args[0] === "run" || args[0] === "play" ? args.shift() : undefined;
 
 if (command === "play") {
-  const reportFile = args[0];
-  if (!reportFile || args.length > 1) {
-    console.error("Usage: smoking play <report file>");
+  const ui = args.includes("--ui");
+  const positional = args.filter((arg) => arg !== "--ui");
+  const reportFile = positional[0];
+  if (!reportFile || positional.length > 1) {
+    console.error("Usage: smoking play [--ui] <report file>");
     process.exit(1);
   }
   const [playOk, playError] = await result(async () => {
     const text = await Bun.file(reportFile).text();
-    await play(parsePlayableCases(text));
+    if (!ui) return play(parsePlayableCases(text));
+    const server = serveReportUI(text);
+    console.error(`Player at ${server.url} (Ctrl+C to stop)`);
+    await new Promise(() => {}); // serve until interrupted
   });
   if (!playOk) {
     console.error(

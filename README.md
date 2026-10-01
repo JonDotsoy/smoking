@@ -8,7 +8,9 @@ its own isolated environment. `smoking` installs the npm packages the tests
 need, prepares the working files and scripts, runs every `case` in an isolated
 temporary directory, and cleans those workspaces up afterwards with `teardown`
 scripts and by deleting the temporary directory. It prints `✔` or `✘` for each
-case (or a JSON report, with `--json`).
+case (or a JSON report, with `--json`). A saved report records each case's
+console output, so you can replay it later in the terminal or in a browser
+player (`play`).
 
 ## Requirements
 
@@ -26,6 +28,12 @@ npx @jondotsoy/smoking run [options] <manifest.donly>
 
 `run` is optional (`smoking <manifest.donly>` does the same), but it is the safe
 form for a manifest named like a command, e.g. `smoking run play`.
+
+```sh
+bunx @jondotsoy/smoking play [--ui] <report file>
+```
+
+`play` replays a saved report (see [Replaying a report](#replaying-a-report)).
 
 Running it without a file, or with `--help`, prints the full reference
 (directives, options, exit codes and a runnable example).
@@ -46,12 +54,41 @@ Running it without a file, or with `--help`, prints the full reference
 ```sh
 bunx @jondotsoy/smoking run --output report.json examples/basic.donly
 bunx @jondotsoy/smoking play report.json
+bunx @jondotsoy/smoking play --ui report.json
 ```
 
-`play` writes the console output recorded in the report back to the terminal,
-byte by byte and with its original timing (each case is announced with a
-`▶ <name>` line on stderr). It needs a report with a cast, so it won't work on
-one saved with `--no-cast`.
+| Command              | What it does                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `play <report>`      | Writes the recorded console output back to the terminal, byte by byte and with its original timing (each case is announced with a `▶ <name>` line on stderr). |
+| `play --ui <report>` | Serves a browser player and the report on `http://localhost` (random port, the URL is printed; Ctrl+C stops it).                                              |
+
+Both need a report with a cast, so they fail on one saved with `--no-cast`.
+
+#### Colors
+
+The cast keeps the bytes as the script wrote them, and the player renders ANSI
+colors and styles. Scripts write to a pipe, though, so runtimes turn colors off
+there: a plain `console.log({ a: 1 })` is recorded without colors. To record
+them, set `FORCE_COLOR` in the case:
+
+```
+case colorful {
+  env FORCE_COLOR 1
+  run <<<ts
+    console.log({ a: 1, b: "two" })
+}
+```
+
+#### Browser player
+
+A terminal with a time bar. It processes the whole cast up front, one terminal
+state per chunk, so you can scrub, pause and change the speed (0.25×–4×). Space
+plays/pauses, ←/→ jump 1 s, Home/End go to the start/end. With several cases, pick
+one from the list; columns and rows (default 80×24) are adjustable. Blue marks on
+the bar are stdout chunks, red ones stderr.
+
+The player is also a standalone page, `src/player.html`: open it and drop a
+report on it, or serve it and use `player.html?report=report.json`.
 
 ## Example
 

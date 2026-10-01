@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>smoking · player</title>
+    <style>
+      :root {
+        --bg: #11131a;
+        --panel: #1a1d27;
+        --fg: #d7dae0;
+        --muted: #8a90a0;
+        --accent: #5aa9ff;
+        --term-bg: #0c0d12;
+        --term-fg: #d7dae0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px;
+        gap: 12px;
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        max-width: 960px;
+      }
+      .bar label {
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      select,
+      input[type="number"],
+      button {
+        background: var(--panel);
+        color: var(--fg);
+        border: 1px solid #2c3040;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font: inherit;
+      }
+      input[type="number"] {
+        width: 64px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      .window {
+        width: 100%;
+        max-width: 960px;
+        background: var(--term-bg);
+        border: 1px solid #2c3040;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .title {
+        padding: 6px 12px;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #term {
+        margin: 0;
+        padding: 8px 12px;
+        overflow: auto;
+        color: var(--term-fg);
+        font:
+          14px/1.25 ui-monospace,
+          "SF Mono",
+          Menlo,
+          Consolas,
+          monospace;
+        white-space: pre;
+      }
+      .cursor {
+        background: var(--term-fg);
+        color: var(--term-bg);
+      }
+      .controls {
+        width: 100%;
+        max-width: 960px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #seek {
+        flex: 1;
+        accent-color: var(--accent);
+      }
+      .time {
+        font-variant-numeric: tabular-nums;
+        color: var(--muted);
+        min-width: 130px;
+        text-align: right;
+      }
+      #ticks {
+        width: 100%;
+        max-width: 960px;
+        height: 10px;
+        display: block;
+      }
+      #drop {
+        width: 100%;
+        max-width: 960px;
+        border: 2px dashed #2c3040;
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+        color: var(--muted);
+      }
+      #drop.over {
+        border-color: var(--accent);
+      }
+      #error {
+        color: #ff7b7b;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="drop">
+      Suelta aquí un reporte de smoking (<code>--output report.json</code>) o
+      <input id="file" type="file" accept=".json,application/json" />
+      <div id="error" role="alert"></div>
+    </div>
+
+    <div class="bar" id="options" hidden>
+      <label
+        >caso
+        <select id="case"></select
+      ></label>
+      <label>cols <input id="cols" type="number" min="20" max="400" value="80" /></label>
+      <label>filas <input id="rows" type="number" min="5" max="100" value="24" /></label>
+      <label
+        >velocidad
+        <select id="speed">
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+          <option value="4">4×</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="window" id="window" hidden>
+      <div class="title" id="title"></div>
+      <pre id="term"></pre>
+    </div>
+
+    <canvas id="ticks" hidden></canvas>
+    <div class="controls" id="controls" hidden>
+      <button id="restart" title="Inicio (Home)">⏮</button>
+      <button id="play" title="Reproducir / pausar (espacio)">▶</button>
+      <input id="seek" type="range" min="0" max="0" step="any" value="0" />
+      <span class="time" id="time">0.000 / 0.000 s</span>
+    </div>
+
+    <script>
+      "use strict";
+
+      // ───────────────────────── Terminal emulator ─────────────────────────
+      // Processes a whole cast and records one immutable snapshot of the
+      // terminal per chunk. Rows are never mutated once shared, so snapshots
+      // share every row that did not change between them.
+
+      const DEFAULT_STYLE = 0;
+      const styles = [{}]; // interned style objects; id 0 = default
+      const styleIds = new Map([["{}", 0]]);
+      const internStyle = (style) => {
+        const key = JSON.stringify(style);
+        let id = styleIds.get(key);
+        if (id === undefined) {
+          id = styles.length;
+          styles.push({ ...style });
+          styleIds.set(key, id);
+        }
+        return id;
+      };
+
+      const BLANK = Object.freeze({ c: " ", s: DEFAULT_STYLE });
+
+      const ANSI = [
+        "#000000",
+        "#cd3131",
+        "#0dbc79",
+        "#e5e510",
+        "#2472c8",
+        "#bc3fbc",
+        "#11a8cd",
+        "#e5e5e5",
+        "#666666",
+        "#f14c4c",
+        "#23d18b",
+        "#f5f543",
+        "#3b8eea",
+        "#d670d6",
+        "#29b8db",
+        "#ffffff",
+      ];
+      const color256 = (n) => {
+        if (n < 16) return ANSI[n];
+        if (n < 232) {
+          const v = [0, 95, 135, 175, 215, 255];
+          n -= 16;
+          return `rgb(${v[Math.floor(n / 36)]},${v[Math.floor(n / 6) % 6]},${v[n % 6]})`;
+        }
+        const g = 8 + (n - 232) * 10;
+        return `rgb(${g},${g},${g})`;
+      };
+
+      class Terminal {
+        constructor(cols, rows) {
+          this.cols = cols;
+          this.rows = rows;
+          this.scrollback = []; // append-only; snapshots store only its length
+          this.screen = Array.from({ length: rows }, () => this.blankRow());
+          this.x = 0;
+          this.y = 0;
+          this.pendingWrap = false;
+          this.style = {};
+          this.styleId = DEFAULT_STYLE;
+          this.cursorVisible = true;
+          this.saved = { x: 0, y: 0 };
+          this.state = "ground"; // ground | esc | csi | osc | oscEsc | skip1
+          this.params = "";
+        }
+
+        blankRow() {
+          return Array.from({ length: this.cols }, () => BLANK);
+        }
+
+        // Screen rows are replaced, never edited in place.
+        setCell(y, x, cell) {
+          const row = this.screen[y].slice();
+          row[x] = cell;
+          this.screen[y] = row;
+        }
+
+        snapshot() {
+          return {
+            screen: this.screen.slice(),
+            scrollbackLength: this.scrollback.length,
+            x: this.x,
+            y: this.y,
+            cursorVisible: this.cursorVisible,
+          };
+        }
+
+        scrollUp(n = 1) {
+          for (let i = 0; i < n; i++) {
+            this.scrollback.push(this.screen.shift());
+            this.screen.push(this.blankRow());
+          }
+        }
+
+        scrollDown(n = 1) {
+          for (let i = 0; i < n; i++) {
+            this.screen.pop();
+            this.screen.unshift(this.blankRow());
+          }
+        }
+
+        lineFeed() {
+          if (this.y === this.rows - 1) this.scrollUp();
+          else this.y++;
+        }
+
+        put(ch) {
+          if (this.pendingWrap) {
+            this.x = 0;
+            this.pendingWrap = false;
+            this.lineFeed();
+          }
+          this.setCell(this.y, this.x, { c: ch, s: this.styleId });
+          if (this.x === this.cols - 1) this.pendingWrap = true;
+          else this.x++;
+        }
+
+        feed(text) {
+          for (const ch of text) this.char(ch);
+        }
+
+        char(ch) {
+          const code = ch.codePointAt(0);
+          switch (this.state) {
+            case "esc":
+              return this.escape(ch);
+            case "skip1":
+              this.state = "ground";
+              return;
+            case "csi":
+              if (code >= 0x40 && code <= 0x7e) {
+                this.state = "ground";
+                this.csi(ch, this.params);
+              } else if (code === 0x1b) {
+                this.state = "esc";
+              } else {
+                this.params += ch;
+              }
+              return;
+            case "osc":
+              if (code === 0x07) this.state = "ground";
+              else if (code === 0x1b) this.state = "oscEsc";
+              return;
+            case "oscEsc":
+              this.state = "ground";
+              if (ch !== "\\") this.escape(ch);
+              return;
+          }
+          if (code === 0x1b) this.state = "esc";
+          else if (ch === "\n" || code === 0x0b || code === 0x0c) {
+            // The recorded bytes come from a pipe; a real TTY would map LF to CRLF.
+            this.x = 0;
+            this.pendingWrap = false;
+            this.lineFeed();
+          } else if (ch === "\r") {
+            this.x = 0;
+            this.pendingWrap = false;
+          } else if (ch === "\b") {
+            if (this.x > 0) this.x--;
+            this.pendingWrap = false;
+          } else if (ch === "\t") {
+            this.x = Math.min(this.cols - 1, (this.x + 8) & ~7);
+            this.pendingWrap = false;
+          } else if (code >= 0x20 && code !== 0x7f) this.put(ch);
+          // other C0 controls (BEL, …) are ignored
+        }
+
+        escape(ch) {
+          this.state = "ground";
+          if (ch === "[") {
+            this.state = "csi";
+            this.params = "";
+          } else if (ch === "]") this.state = "osc";
+          else if (ch === "7") this.saved = { x: this.x, y: this.y };
+          else if (ch === "8") {
+            this.x = this.saved.x;
+            this.y = this.saved.y;
+            this.pendingWrap = false;
+          } else if (ch === "M") {
+            if (this.y === 0) this.scrollDown();
+            else this.y--;
+          } else if (ch === "D") this.lineFeed();
+          else if (ch === "E") {
+            this.x = 0;
+            this.lineFeed();
+          } else if (ch === "c") {
+            const { scrollback } = this;
+            Object.assign(this, new Terminal(this.cols, this.rows), { scrollback });
+          } else if ("()*+#%".includes(ch)) {
+            this.state = "skip1"; // charset / DEC sequences take one more byte
+          }
+        }
+
+        csi(final, raw) {
+          const priv = /^[?<>=]/.test(raw) ? raw[0] : "";
+          const nums = raw
+            .slice(priv ? 1 : 0)
+            .split(/[;:]/)
+            .map((p) => (p === "" ? NaN : Number(p)));
+          const p = (i, d) => (Number.isFinite(nums[i]) && nums[i] > 0 ? nums[i] : d);
+          const mode = Number.isFinite(nums[0]) ? nums[0] : 0;
+          const clampX = (x) => Math.max(0, Math.min(this.cols - 1, x));
+          const clampY = (y) => Math.max(0, Math.min(this.rows - 1, y));
+          this.pendingWrap = false;
+
+          if (priv === "?") {
+            if ((final === "h" || final === "l") && nums.includes(25)) {
+              this.cursorVisible = final === "h";
+            }
+            return;
+          }
+          if (priv) return;
+
+          switch (final) {
+            case "A":
+              this.y = clampY(this.y - p(0, 1));
+              break;
+            case "B":
+              this.y = clampY(this.y + p(0, 1));
+              break;
+            case "C":
+              this.x = clampX(this.x + p(0, 1));
+              break;
+            case "D":
+              this.x = clampX(this.x - p(0, 1));
+              break;
+            case "E":
+              this.y = clampY(this.y + p(0, 1));
+              this.x = 0;
+              break;
+            case "F":
+              this.y = clampY(this.y - p(0, 1));
+              this.x = 0;
+              break;
+            case "G":
+              this.x = clampX(p(0, 1) - 1);
+              break;
+            case "d":
+              this.y = clampY(p(0, 1) - 1);
+              break;
+            case "H":
+            case "f":
+              this.y = clampY(p(0, 1) - 1);
+              this.x = clampX(p(1, 1) - 1);
+              break;
+            case "J":
+              this.eraseDisplay(mode);
+              break;
+            case "K":
+              this.eraseLine(mode);
+              break;
+            case "L":
+              this.insertLines(p(0, 1));
+              break;
+            case "M":
+              this.deleteLines(p(0, 1));
+              break;
+            case "@":
+              this.insertChars(p(0, 1));
+              break;
+            case "P":
+              this.deleteChars(p(0, 1));
+              break;
+            case "X":
+              this.eraseChars(p(0, 1));
+              break;
+            case "S":
+              this.scrollUp(p(0, 1));
+              break;
+            case "T":
+              this.scrollDown(p(0, 1));
+              break;
+            case "s":
+              this.saved = { x: this.x, y: this.y };
+              break;
+            case "u":
+              this.x = this.saved.x;
+              this.y = this.saved.y;
+              break;
+            case "m":
+              this.sgr(nums);
+              break;
+          }
+        }
+
+        sgr(nums) {
+          if (nums.length === 0) nums = [0];
+          const s = { ...this.style };
+          for (let i = 0; i < nums.length; i++) {
+            const n = Number.isFinite(nums[i]) ? nums[i] : 0;
+            if (n === 0) for (const k of Object.keys(s)) delete s[k];
+            else if (n === 1) s.bold = true;
+            else if (n === 2) s.dim = true;
+            else if (n === 3) s.italic = true;
+            else if (n === 4) s.underline = true;
+            else if (n === 7) s.inverse = true;
+            else if (n === 9) s.strike = true;
+            else if (n === 22) {
+              delete s.bold;
+              delete s.dim;
+            } else if (n === 23) delete s.italic;
+            else if (n === 24) delete s.underline;
+            else if (n === 27) delete s.inverse;
+            else if (n === 29) delete s.strike;
+            else if (n >= 30 && n <= 37) s.fg = ANSI[n - 30];
+            else if (n >= 90 && n <= 97) s.fg = ANSI[n - 90 + 8];
+            else if (n >= 40 && n <= 47) s.bg = ANSI[n - 40];
+            else if (n >= 100 && n <= 107) s.bg = ANSI[n - 100 + 8];
+            else if (n === 39) delete s.fg;
+            else if (n === 49) delete s.bg;
+            else if (n === 38 || n === 48) {
+              const key = n === 38 ? "fg" : "bg";
+              if (nums[i + 1] === 5) {
+                s[key] = color256(nums[i + 2] || 0);
+                i += 2;
+              } else if (nums[i + 1] === 2) {
+                s[key] = `rgb(${nums[i + 2] || 0},${nums[i + 3] || 0},${nums[i + 4] || 0})`;
+                i += 4;
+              }
+            }
+          }
+          this.style = s;
+          this.styleId = internStyle(s);
+        }
+
+        eraseCells(y, from, to) {
+          const row = this.screen[y].slice();
+          const blank = { c: " ", s: this.style.bg ? this.styleId : DEFAULT_STYLE };
+          for (let x = from; x < to; x++) row[x] = blank;
+          this.screen[y] = row;
+        }
+
+        eraseLine(mode) {
+          if (mode === 0) this.eraseCells(this.y, this.x, this.cols);
+          else if (mode === 1) this.eraseCells(this.y, 0, this.x + 1);
+          else this.eraseCells(this.y, 0, this.cols);
+        }
+
+        eraseDisplay(mode) {
+          if (mode === 0) {
+            this.eraseCells(this.y, this.x, this.cols);
+            for (let y = this.y + 1; y < this.rows; y++) this.eraseCells(y, 0, this.cols);
+          } else if (mode === 1) {
+            for (let y = 0; y < this.y; y++) this.eraseCells(y, 0, this.cols);
+            this.eraseCells(this.y, 0, this.x + 1);
+          } else {
+            for (let y = 0; y < this.rows; y++) this.eraseCells(y, 0, this.cols);
+          }
+        }
+
+        insertLines(n) {
+          n = Math.min(n, this.rows - this.y);
+          this.screen.splice(this.rows - n, n);
+          for (let i = 0; i < n; i++) this.screen.splice(this.y, 0, this.blankRow());
+        }
+
+        deleteLines(n) {
+          n = Math.min(n, this.rows - this.y);
+          this.screen.splice(this.y, n);
+          for (let i = 0; i < n; i++) this.screen.push(this.blankRow());
+        }
+
+        insertChars(n) {
+          const row = this.screen[this.y].slice();
+          row.splice(this.x, 0, ...Array.from({ length: n }, () => BLANK));
+          this.screen[this.y] = row.slice(0, this.cols);
+        }
+
+        deleteChars(n) {
+          const row = this.screen[this.y].slice();
+          row.splice(this.x, n);
+          while (row.length < this.cols) row.push(BLANK);
+          this.screen[this.y] = row;
+        }
+
+        eraseChars(n) {
+          this.eraseCells(this.y, this.x, Math.min(this.cols, this.x + n));
+        }
+      }
+
+      // One snapshot per chunk. Each stream has its own UTF-8 decoder so a
+      // multi-byte character split across two chunks stays intact.
+      const buildTimeline = (cast, cols, rows) => {
+        const term = new Terminal(cols, rows);
+        const decoders = { stdout: new TextDecoder(), stderr: new TextDecoder() };
+        const frames = [{ elapse: 0, snapshot: term.snapshot() }];
+        for (const chunk of cast.chunks) {
+          const bytes = Uint8Array.from(chunk.buffer);
+          term.feed(decoders[chunk.stream].decode(bytes, { stream: true }));
+          frames.push({ elapse: chunk.elapse, snapshot: term.snapshot() });
+        }
+        return { frames, scrollback: term.scrollback };
+      };
+
+      // Last frame whose elapse <= t (frames are sorted by elapse).
+      const frameAt = (frames, t) => {
+        let lo = 0;
+        let hi = frames.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (frames[mid].elapse <= t) lo = mid;
+          else hi = mid - 1;
+        }
+        return lo;
+      };
+
+      // ───────────────────────────── Rendering ─────────────────────────────
+      const MAX_SCROLLBACK_SHOWN = 2000;
+
+      const styleCss = (s) => {
+        let { fg, bg } = s;
+        if (s.inverse) [fg, bg] = [bg || "var(--term-bg)", fg || "var(--term-fg)"];
+        const css = [];
+        if (fg) css.push(`color:${fg}`);
+        if (bg) css.push(`background:${bg}`);
+        if (s.bold) css.push("font-weight:bold");
+        if (s.dim) css.push("opacity:.6");
+        if (s.italic) css.push("font-style:italic");
+        const deco = [s.underline && "underline", s.strike && "line-through"].filter(Boolean);
+        if (deco.length) css.push(`text-decoration:${deco.join(" ")}`);
+        return css.join(";");
+      };
+
+      const appendRun = (parent, text, styleId, isCursor) => {
+        if (styleId === DEFAULT_STYLE && !isCursor) return parent.append(text);
+        const span = document.createElement("span");
+        if (isCursor) span.className = "cursor";
+        else span.style.cssText = styleCss(styles[styleId]);
+        span.textContent = text;
+        parent.append(span);
+      };
+
+      const rowToNodes = (row, cursorX, parent) => {
+        let i = 0;
+        while (i < row.length) {
+          if (i === cursorX) {
+            appendRun(parent, row[i].c, row[i].s, true);
+            i++;
+            continue;
+          }
+          const s = row[i].s;
+          let text = "";
+          while (i < row.length && i !== cursorX && row[i].s === s) text += row[i++].c;
+          appendRun(parent, text, s, false);
+        }
+      };
+
+      const render = (timeline, frameIndex, termEl) => {
+        const { snapshot } = timeline.frames[frameIndex];
+        const from = Math.max(0, snapshot.scrollbackLength - MAX_SCROLLBACK_SHOWN);
+        const lines = [];
+        for (let i = from; i < snapshot.scrollbackLength; i++) {
+          lines.push([timeline.scrollback[i], -1]);
+        }
+        snapshot.screen.forEach((row, y) =>
+          lines.push([row, snapshot.cursorVisible && y === snapshot.y ? snapshot.x : -1]),
+        );
+        const frag = document.createDocumentFragment();
+        for (const [row, cursorX] of lines) {
+          const line = document.createElement("div");
+          rowToNodes(row, cursorX, line);
+          frag.append(line);
+        }
+        termEl.replaceChildren(frag);
+      };
+
+      // ────────────────────────────── Player UI ─────────────────────────────
+      const $ = (id) => document.getElementById(id);
+      const el = {
+        drop: $("drop"),
+        file: $("file"),
+        error: $("error"),
+        options: $("options"),
+        caseSel: $("case"),
+        cols: $("cols"),
+        rows: $("rows"),
+        speed: $("speed"),
+        win: $("window"),
+        title: $("title"),
+        term: $("term"),
+        ticks: $("ticks"),
+        controls: $("controls"),
+        restart: $("restart"),
+        play: $("play"),
+        seek: $("seek"),
+        time: $("time"),
+      };
+
+      const app = {
+        cases: [],
+        timeline: null,
+        duration: 0,
+        t: 0,
+        playing: false,
+        lastFrame: -1,
+        raf: 0,
+        lastTs: 0,
+      };
+
+      const parseReport = (text) => {
+        const report = JSON.parse(text);
+        if (!Array.isArray(report?.cases)) {
+          throw new Error("no es un reporte de smoking (falta `cases`)");
+        }
+        const cases = report.cases
+          .map((c, i) => ({ name: String(c?.name ?? `case ${i + 1}`), cast: c?.cast }))
+          .filter((c) => c.cast && Array.isArray(c.cast.chunks));
+        if (cases.length === 0) {
+          throw new Error("el reporte no tiene cast (¿se guardó con --no-cast?)");
+        }
+        return cases;
+      };
+
+      const paint = () => {
+        const index = frameAt(app.timeline.frames, app.t);
+        if (index !== app.lastFrame) {
+          app.lastFrame = index;
+          render(app.timeline, index, el.term);
+          el.term.scrollTop = el.term.scrollHeight;
+        }
+        el.seek.value = String(app.t);
+        el.time.textContent = `${(app.t / 1000).toFixed(3)} / ${(app.duration / 1000).toFixed(3)} s`;
+      };
+
+      // One mark per chunk on the time bar (blue stdout, red stderr).
+      const drawTicks = () => {
+        const canvas = el.ticks;
+        const dpr = devicePixelRatio;
+        const w = (canvas.width = canvas.clientWidth * dpr);
+        const h = (canvas.height = canvas.clientHeight * dpr);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, w, h);
+        const seek = el.seek.getBoundingClientRect();
+        const box = canvas.getBoundingClientRect();
+        const thumb = 8; // half the slider thumb: the track is inset by this much
+        const left = (seek.left - box.left + thumb) * dpr;
+        const width = (seek.width - 2 * thumb) * dpr;
+        for (const chunk of app.cases[el.caseSel.value].cast.chunks) {
+          ctx.fillStyle = chunk.stream === "stderr" ? "#ff7b7b" : "#5aa9ff";
+          const x = left + (app.duration ? (chunk.elapse / app.duration) * width : 0);
+          ctx.fillRect(Math.round(x), 0, Math.max(1, dpr), h);
+        }
+      };
+
+      const stop = () => {
+        app.playing = false;
+        cancelAnimationFrame(app.raf);
+        el.play.textContent = "▶";
+      };
+
+      const tick = (ts) => {
+        if (!app.playing) return;
+        app.t = Math.min(app.duration, app.t + (ts - app.lastTs) * Number(el.speed.value));
+        app.lastTs = ts;
+        paint();
+        if (app.t >= app.duration) stop();
+        else app.raf = requestAnimationFrame(tick);
+      };
+
+      const play = () => {
+        if (app.t >= app.duration) app.t = 0;
+        app.playing = true;
+        el.play.textContent = "⏸";
+        app.lastTs = performance.now();
+        app.raf = requestAnimationFrame(tick);
+      };
+
+      const seekTo = (t) => {
+        app.t = Math.max(0, Math.min(app.duration, t));
+        paint();
+      };
+
+      // Processes the selected case's whole cast into a timeline of terminal states.
+      const load = () => {
+        stop();
+        const { name, cast } = app.cases[el.caseSel.value];
+        const cols = Math.max(20, Math.min(400, Number(el.cols.value) || 80));
+        const rows = Math.max(5, Math.min(100, Number(el.rows.value) || 24));
+        app.timeline = buildTimeline(cast, cols, rows);
+        app.duration = cast.chunks.at(-1)?.elapse ?? 0;
+        app.t = 0;
+        app.lastFrame = -1;
+        el.seek.max = String(app.duration);
+        el.title.textContent = `▶ ${name} · ${cast.chunks.length} chunks · ${cols}×${rows}`;
+        el.term.style.height = `calc(${rows} * 1.25em + 16px)`;
+        paint();
+        drawTicks();
+      };
+
+      const open = (text) => {
+        el.error.textContent = "";
+        try {
+          app.cases = parseReport(text);
+        } catch (e) {
+          el.error.textContent = `Error: ${e.message}`;
+          return;
+        }
+        el.caseSel.replaceChildren(...app.cases.map((c, i) => new Option(c.name, String(i))));
+        for (const node of [el.options, el.win, el.controls, el.ticks]) node.hidden = false;
+        load();
+      };
+
+      const openFile = async (file) => file && open(await file.text());
+
+      el.file.addEventListener("change", () => openFile(el.file.files[0]));
+      el.drop.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        el.drop.classList.add("over");
+      });
+      el.drop.addEventListener("dragleave", () => el.drop.classList.remove("over"));
+      el.drop.addEventListener("drop", (e) => {
+        e.preventDefault();
+        el.drop.classList.remove("over");
+        openFile(e.dataTransfer.files[0]);
+      });
+      for (const input of [el.caseSel, el.cols, el.rows]) input.addEventListener("change", load);
+      el.play.addEventListener("click", () => (app.playing ? stop() : play()));
+      el.restart.addEventListener("click", () => seekTo(0));
+      el.seek.addEventListener("input", () => seekTo(Number(el.seek.value)));
+      addEventListener("resize", () => app.timeline && drawTicks());
+      addEventListener("keydown", (e) => {
+        const typing = /^(INPUT|SELECT)$/.test(e.target.tagName) && e.target !== el.seek;
+        if (!app.timeline || typing) return;
+        if (e.key === " ") {
+          e.preventDefault();
+          if (app.playing) stop();
+          else play();
+        } else if (e.key === "Home") seekTo(0);
+        else if (e.key === "End") seekTo(app.duration);
+        else if (e.key === "ArrowLeft") seekTo(app.t - 1000);
+        else if (e.key === "ArrowRight") seekTo(app.t + 1000);
+      });
+
+      // `player.html?report=path/to/report.json` loads a report over HTTP.
+      const reportUrl = new URLSearchParams(location.search).get("report");
+      if (reportUrl) {
+        fetch(reportUrl)
+          .then((r) => r.text())
+          .then(open)
+          .catch((e) => (el.error.textContent = `Error: ${e.message}`));
+      }
+    </script>
+  </body>
+</html>
