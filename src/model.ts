@@ -1,4 +1,5 @@
-import { dirname, extname, resolve } from "node:path";
+import { access } from "node:fs/promises";
+import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { result } from "./utils/result.ts";
 import { parseSpec, type CaseSpec, type ScriptSpec, type Spec } from "./spec.ts";
@@ -41,6 +42,9 @@ export class Case {
   // The file the case was declared in.
   readonly location: URL;
   readonly env: Readonly<Record<string, string>>;
+  // Files or folders copied into the working directory (`add`): path relative
+  // to the working directory -> where it lives.
+  readonly adds: ReadonlyMap<string, URL>;
   readonly files: ReadonlyMap<string, Uint8Array>;
   readonly setups: readonly Script[];
   readonly run?: Script;
@@ -53,6 +57,7 @@ export class Case {
     name?: string;
     location: URL;
     env?: Record<string, string>;
+    adds?: Map<string, URL>;
     files?: Map<string, Uint8Array>;
     setups?: Script[];
     run?: Script;
@@ -62,6 +67,7 @@ export class Case {
     this.name = init.name;
     this.location = init.location;
     this.env = init.env ?? {};
+    this.adds = init.adds ?? new Map();
     this.files = init.files ?? new Map();
     this.setups = init.setups ?? [];
     this.run = init.run;
@@ -131,7 +137,27 @@ const buildCase = async (spec: CaseSpec, location: URL, baseDir: string): Promis
   return new Case({ name: spec.name, location, error: message });
 };
 
+const exists = async (path: string): Promise<boolean> => (await result(access(path)))[0];
+
+// `add <path>`: a file or folder next to the spec file, copied keeping its
+// relative path (`add src/` -> `<workDir>/src/`).
+const buildAdds = async (spec: CaseSpec["adds"], baseDir: string): Promise<Map<string, URL>> => {
+  const adds = new Map<string, URL>();
+  for (const add of spec) {
+    if (add.error !== undefined) throw new Error(add.error);
+    const source = resolve(baseDir, add.path);
+    const rel = relative(baseDir, source);
+    if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
+      throw new Error(`\`add ${add.path}\` must point inside the spec file's folder`);
+    }
+    if (!(await exists(source))) throw new Error(`\`add\` path not found: ${source}`);
+    adds.set(rel, pathToFileURL(source));
+  }
+  return adds;
+};
+
 const buildValidCase = async (spec: CaseSpec, location: URL, baseDir: string): Promise<Case> => {
+  const adds = await buildAdds(spec.adds, baseDir);
   const files = new Map<string, Uint8Array>();
   for (const file of spec.files) {
     if (file.error !== undefined || file.content === undefined) throw new Error(file.error);
@@ -141,6 +167,7 @@ const buildValidCase = async (spec: CaseSpec, location: URL, baseDir: string): P
     name: spec.name,
     location,
     env: Object.fromEntries(spec.env),
+    adds,
     files,
     setups: await Promise.all(spec.setups.map((s) => buildScript(s, "setup", baseDir))),
     run: spec.run && (await buildScript(spec.run, "run", baseDir)),

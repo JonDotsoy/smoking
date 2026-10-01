@@ -50,6 +50,20 @@ describe("smoking CLI", () => {
     expect(stderr).toMatchSnapshot("stderr");
   });
 
+  test("`add` copies a folder next to the spec file into the working directory", () => {
+    const { exitCode, stdout } = runCliWithArgs([join(FIXTURES_DIR, "add-directive/add.donly")]);
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("added = hello from src");
+  });
+
+  test("`add` fails the case when the path does not exist", () => {
+    const { exitCode, stdout } = runCli("add-missing.donly");
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("path not found");
+  });
+
   test("--dependency installs extra packages as if declared in the file", () => {
     const { exitCode, stdout, stderr } = runCliWithArgs([
       "--dependency",

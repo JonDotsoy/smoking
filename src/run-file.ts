@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { Writable } from "node:stream";
 import { dirname, join } from "node:path";
@@ -177,6 +177,12 @@ const capturedStderr = async (
 };
 
 const writeCaseFiles = async (spec: Case, workDir: string): Promise<void> => {
+  // Runs before `file` so a `file` can override something copied by `add`.
+  for (const [path, source] of spec.adds) {
+    const destination = join(workDir, path);
+    await mkdir(dirname(destination), { recursive: true });
+    await cp(fileURLToPath(source), destination, { recursive: true });
+  }
   for (const [path, content] of spec.files) await writeCaseFile(path, content, workDir);
 };
 

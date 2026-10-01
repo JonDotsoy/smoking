@@ -9,6 +9,8 @@ export type ScriptSpec =
 export type CaseSpec = {
   name?: string;
   env: [name: string, value: string][];
+  // Paths (relative to the spec file) copied into the working directory.
+  adds: { path: string; error?: string }[];
   files: { path: string; content?: string; error?: string }[];
   setups: ScriptSpec[];
   run?: ScriptSpec;
@@ -67,6 +69,13 @@ const donCase = (caseDirective: Directive): CaseSpec => ({
   env: directivesNamed(caseDirective, "env").map((d) => {
     const [name, value] = d.args.map(argValue);
     return [name ?? "", value ?? ""];
+  }),
+  adds: directivesNamed(caseDirective, "add").map((d) => {
+    const path = d.args[0];
+    if (typeof path !== "string" || !path) {
+      return { path: "", error: "`add` directive expects a path as its argument" };
+    }
+    return { path };
   }),
   files: directivesNamed(caseDirective, "file").map((d) => {
     const [path, content] = d.args;
@@ -127,6 +136,9 @@ const yamlCase = (value: unknown): CaseSpec => {
   return {
     name: c.name === undefined ? undefined : String(c.name),
     env: env.map(([name, v]) => [name, String(v ?? "")]),
+    adds: list(c.add).map((p) =>
+      typeof p === "string" && p ? { path: p } : { path: "", error: "`add` expects a path string" },
+    ),
     files: files.map(([path, content]) =>
       typeof content === "string"
         ? { path, content }

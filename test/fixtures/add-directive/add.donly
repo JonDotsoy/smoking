@@ -1,0 +1,8 @@
+case add {
+  add src/
+  run <<<ts
+    import { readFileSync } from "node:fs"
+    const content = readFileSync("./src/greeting.txt", "utf8").trim()
+    if (content !== "hello from src") throw new Error("unexpected: " + content)
+    console.log("added =", content)
+}

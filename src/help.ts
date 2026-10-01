@@ -135,6 +135,13 @@ FILE FORMAT
     env <NAME> <VALUE>
         Set an environment variable for this case's script. Repeatable.
 
+    add <path>
+        Copy a file or folder into the case's working directory before the
+        script runs, keeping its relative path: "add src/" makes src/ available
+        to the script. <path> is relative to the .donly file and must stay
+        inside its folder. Runs before "file", so a "file" can override it.
+        Repeatable. In YAML: "add" takes a path or a list of paths.
+
     file <path> <<<ext
         Write a file before the script runs. <path> is relative to the
         case's working directory and its parent folders are created for you.
