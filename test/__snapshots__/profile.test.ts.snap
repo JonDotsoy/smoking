@@ -44,3 +44,17 @@ exports[`snapshot of the shape of the profiles in a report 1`] = `
   },
 ]
 `;
+
+exports[`snapshot of the call stack of nested functions doing math (bun) 1`] = `
+[
+  "outer",
+  "inner",
+]
+`;
+
+exports[`snapshot of the call stack of nested functions doing math (node) 1`] = `
+[
+  "outer",
+  "inner",
+]
+`;
