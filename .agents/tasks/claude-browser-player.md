@@ -11,3 +11,5 @@
 - [x] Browser test for `play --ui` with Playwright (`test/play-ui.browser.test.ts`; skipped without Chromium)
 
 - [x] Browser test that records a real script (several console.log/console.error) and plays it
+
+- [x] Cover colored `console.log` (ANSI): `env FORCE_COLOR 1` records them, the player renders them; documented in the README

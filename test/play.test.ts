@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Capture } from "../src/capture.ts";
 import { parsePlayableCases, play } from "../src/play.ts";
 import { result } from "../src/utils/result.ts";
 import { runCliWithArgs, runDonly } from "./helpers.ts";
@@ -150,5 +151,32 @@ describe("smoking play --ui", () => {
     const run = runCliWithArgs(["play", "--ui"]);
     expect(run.exitCode).toBe(1);
     expect(run.stderr).toContain("Usage: smoking play [--ui] <report file>");
+  });
+});
+
+describe("colors in the cast", () => {
+  const log = (env: string) => `case c {\n${env}  run <<<ts\n    console.log({ n: 1 })\n}\n`;
+  const castText = async (donly: string) => {
+    const dir = await mkdtemp(join(tmpdir(), "smoking-colors-"));
+    const [ok, error, text] = await result(async () => {
+      const file = join(dir, "c.donly");
+      await writeFile(file, donly);
+      const report = join(dir, "report.json");
+      const run = runCliWithArgs(["--output", report, file]);
+      if (run.exitCode !== 0) throw new Error(run.stderr);
+      const { cases } = (await Bun.file(report).json()) as { cases: { cast: Capture }[] };
+      return cases[0]!.cast.chunks.map((c) => String.fromCharCode(...c.buffer)).join("");
+    });
+    await rm(dir, { recursive: true, force: true });
+    if (!ok) throw error;
+    return text!;
+  };
+
+  test("the output is recorded as is: a pipe gets no colors", async () => {
+    expect(await castText(log(""))).toBe("{\n  n: 1,\n}\n");
+  });
+
+  test("`env FORCE_COLOR 1` records the ANSI colors of console.log", async () => {
+    expect(await castText(log("  env FORCE_COLOR 1\n"))).toContain("\x1b[33m1\x1b[");
   });
 });

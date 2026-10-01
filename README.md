@@ -64,6 +64,21 @@ bunx @jondotsoy/smoking play --ui report.json
 
 Both need a report with a cast, so they fail on one saved with `--no-cast`.
 
+#### Colors
+
+The cast keeps the bytes as the script wrote them, and the player renders ANSI
+colors and styles. Scripts write to a pipe, though, so runtimes turn colors off
+there: a plain `console.log({ a: 1 })` is recorded without colors. To record
+them, set `FORCE_COLOR` in the case:
+
+```
+case colorful {
+  env FORCE_COLOR 1
+  run <<<ts
+    console.log({ a: 1, b: "two" })
+}
+```
+
 #### Browser player
 
 A terminal with a time bar. It processes the whole cast up front, one terminal

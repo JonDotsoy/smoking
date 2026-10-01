@@ -154,6 +154,7 @@ describe.skipIf(!chromiumPath)("smoking play --ui (browser)", () => {
 });
 
 const SCRIPT = `case logs {
+  env FORCE_COLOR 1
   run <<<ts
     const pause = () => Bun.sleep(60);
     console.log("one");
@@ -166,6 +167,8 @@ const SCRIPT = `case logs {
     console.error("five (error)");
     await pause();
     console.log("six");
+    await pause();
+    console.log({ count: 7 });
 }
 `;
 
@@ -200,6 +203,7 @@ describe.skipIf(!chromiumPath)("smoking play --ui with a recorded script (browse
   test("the cast keeps every line on its own stream", () => {
     const lines = chunks.flatMap((c) =>
       String.fromCharCode(...c.buffer)
+        .replace(/\x1b\[[0-9;]*m/g, "") // colors
         .split("\n")
         .filter(Boolean)
         .map((line) => [c.stream, line]),
@@ -211,6 +215,9 @@ describe.skipIf(!chromiumPath)("smoking play --ui with a recorded script (browse
       ["stdout", "four"],
       ["stderr", "five (error)"],
       ["stdout", "six"],
+      ["stdout", "{"],
+      ["stdout", "  count: 7,"],
+      ["stdout", "}"],
     ]);
   });
 
@@ -231,6 +238,16 @@ describe.skipIf(!chromiumPath)("smoking play --ui with a recorded script (browse
 
     await seekTo(page, when("six"));
     expect(await terminalText(page)).toBe("one\ntwo (error)\nthree\nfour\nfive (error)\nsix");
+  });
+
+  test("renders the ANSI colors that console.log adds to an object", async () => {
+    await seekTo(page, chunks.at(-1)!.elapse);
+    expect(await terminalText(page)).toContain("{\n  count: 7,\n}");
+    const color = await page.evaluate<string>(`(() => {
+      const span = [...document.querySelectorAll("#term span")].find((e) => e.textContent === "7");
+      return getComputedStyle(span).color;
+    })()`);
+    expect(color).toBe("rgb(229, 229, 16)"); // ANSI yellow, which Bun uses for numbers
   });
 
   test("the time bar spans the recording, up to its last chunk", async () => {
