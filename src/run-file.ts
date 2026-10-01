@@ -1,12 +1,13 @@
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { Writable } from "node:stream";
-import { dirname, extname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ConsoleCapture, type Capture } from "./capture.ts";
 import networkPreload from "./network-preload.txt" with { type: "text" };
 import { readNetwork, type NetworkRequest } from "./network.ts";
 import { result } from "./utils/result.ts";
-import { parseSpec, type CaseSpec, type ScriptSpec, type Spec } from "./spec.ts";
+import { SmokingFile, type Case, type Script } from "./model.ts";
 
 export type CaseResult = {
   name: string;
@@ -53,16 +54,13 @@ const installDependency = async (spec: string, cwd: string, json: boolean): Prom
   }
 };
 
-const writeCaseFile = async (file: CaseSpec["files"][number], workDir: string): Promise<void> => {
-  if (file.error !== undefined || file.content === undefined) throw new Error(file.error);
-  const filePath = join(workDir, file.path);
+const writeCaseFile = async (path: string, content: Uint8Array, workDir: string): Promise<void> => {
+  const filePath = join(workDir, path);
   await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(filePath, file.content);
+  await writeFile(filePath, content);
 };
 
 type ScriptContext = {
-  // Directory of the .donly file; `setup ./x.ts` paths resolve against it.
-  baseDir: string;
   workDir: string;
   runtime: Runtime;
   env: Record<string, string>;
@@ -77,36 +75,27 @@ type ScriptContext = {
 };
 
 // Runs a `run`/`setup`/`teardown` script, given inline or as a path to a
-// file (relative to the spec file); resolves to an error message, or
+// file (`script.location`, run in place); resolves to an error message, or
 // undefined when the script succeeded.
 const runScript = async (
-  source: ScriptSpec,
+  script: Script,
   kind: string,
   fileStem: string,
-  { baseDir, workDir, runtime, env, json, capture, profileDir, profiles, network }: ScriptContext,
+  { workDir, runtime, env, json, capture, profileDir, profiles, network }: ScriptContext,
 ): Promise<string | undefined> => {
+  if (script.error !== undefined) return script.error;
+  const ext = script.syntax;
+  if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
+    return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
+  }
+  // A script given as a path runs in place (not copied) so its own relative
+  // imports keep working.
   let scriptPath: string;
-  let ext: string;
-
-  if (source.kind === "inline") {
-    ext = source.ext;
-    scriptPath = join(workDir, `${fileStem}.${ext}`);
-    if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
-      return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
-    }
-    await writeFile(scriptPath, source.code);
-  } else if (source.kind === "file") {
-    // Run in place (not copied) so its own relative imports keep working.
-    scriptPath = resolve(baseDir, source.path);
-    ext = extname(scriptPath).slice(1).toLowerCase();
-    if (!(await Bun.file(scriptPath).exists())) {
-      return `${kind} file not found: ${scriptPath}`;
-    }
-    if (runtime === "node" && (ext === "tsx" || ext === "jsx")) {
-      return `the node runtime cannot run \`${ext}\` scripts; use --runtime bun`;
-    }
+  if (script.location) {
+    scriptPath = fileURLToPath(script.location);
   } else {
-    return source.message;
+    scriptPath = join(workDir, `${fileStem}.${ext}`);
+    await writeFile(scriptPath, script.command);
   }
 
   const scriptDir = profileDir && join(profileDir, fileStem);
@@ -187,14 +176,13 @@ const capturedStderr = async (
   return Buffer.concat(parts).toString();
 };
 
-const writeCaseFiles = async (spec: CaseSpec, workDir: string): Promise<void> => {
-  for (const file of spec.files) await writeCaseFile(file, workDir);
+const writeCaseFiles = async (spec: Case, workDir: string): Promise<void> => {
+  for (const [path, content] of spec.files) await writeCaseFile(path, content, workDir);
 };
 
 const runCase = async (
-  spec: CaseSpec,
+  spec: Case,
   index: number,
-  baseDir: string,
   workDir: string,
   runtime: Runtime,
   json: boolean,
@@ -205,10 +193,12 @@ const runCase = async (
   const name = spec.name ?? `case ${index + 1}`;
 
   const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  for (const [envName, envValue] of spec.env) {
+  for (const [envName, envValue] of Object.entries(spec.env)) {
     if (!envName) continue;
     env[envName] = envValue;
   }
+
+  if (spec.error !== undefined) return { name, ok: false, error: spec.error };
 
   const [filesOk, filesError] = await result(writeCaseFiles(spec, workDir));
   if (!filesOk) {
@@ -227,7 +217,6 @@ const runCase = async (
   const profiles: ScriptProfile[] | undefined = profileDir ? [] : undefined;
   const network = networkDir ? { dir: networkDir, requests: [] } : undefined;
   const context: ScriptContext = {
-    baseDir,
     workDir,
     runtime,
     env,
@@ -304,7 +293,7 @@ export const runDonlyFile = async (
     network = false,
   }: RunOptions = {},
 ): Promise<Report> => {
-  const spec = parseSpec(filePath, await Bun.file(filePath).text());
+  const spec = await SmokingFile.fromFile(filePath);
 
   // Every run gets its own scratch directory: dependencies are installed
   // here and case scripts run from here, so `smoking` never touches the
@@ -352,7 +341,7 @@ const runInWorkDir = async ({
   networkDir,
 }: {
   filePath: string;
-  spec: Spec;
+  spec: SmokingFile;
   workDir: string;
   dependencies: string[];
   runtime: Runtime;
@@ -382,7 +371,6 @@ const runInWorkDir = async ({
     const caseResult = await runCase(
       caseSpec,
       index,
-      dirname(resolve(filePath)),
       workDir,
       runtime,
       json,
