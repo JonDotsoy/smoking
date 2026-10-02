@@ -1,0 +1,68 @@
+name: Pages
+
+run-name: Pages (${{ github.event_name }}, ${{ github.ref_name }})
+
+# Publishes the browser player (`src/player.html`) to GitHub Pages with the
+# cast of `examples/basic.donly` preloaded.
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Record the example report
+        run: bun bin/smoking.ts run --output site/report.json examples/basic.donly
+
+      - name: Build the site
+        run: |
+          cp src/player.html site/player.html
+          cat > site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8" />
+          <meta http-equiv="refresh" content="0; url=player.html?report=report.json" />
+          <title>smoking · player</title>
+          <a href="player.html?report=report.json">smoking · player</a>
+          HTML
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
