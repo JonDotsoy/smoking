@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - develop
+      - claude/friendly-cray-8i6c05
   workflow_dispatch:
 
 permissions:
