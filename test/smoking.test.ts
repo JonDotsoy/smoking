@@ -50,6 +50,15 @@ describe("smoking CLI", () => {
     expect(stderr).toMatchSnapshot("stderr");
   });
 
+  test("runs `sh` heredocs as shell commands", () => {
+    const { exitCode, stdout } = runCli("shell.donly");
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("ok contenido");
+    expect(stdout).toContain("✔ shell-ok");
+    expect(stdout).toContain("✘ shell-fail\n  boom");
+  });
+
   test("--dependency installs extra packages as if declared in the file", () => {
     const { exitCode, stdout, stderr } = runCliWithArgs([
       "--dependency",

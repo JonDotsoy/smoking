@@ -1,0 +1,15 @@
+case shell-ok {
+  env GREETING hola
+  file ./a.txt <<<txt
+    contenido
+  run <<<sh
+    ls a.txt
+    test "$GREETING" = hola
+    echo "ok $(cat a.txt)"
+}
+
+case shell-fail {
+  run <<<sh
+    echo "boom" >&2
+    exit 3
+}

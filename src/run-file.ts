@@ -98,9 +98,12 @@ const runScript = async (
     await writeFile(scriptPath, script.command);
   }
 
-  const scriptDir = profileDir && join(profileDir, fileStem);
-  const networkFile = network && join(network.dir, `${fileStem}.ndjson`);
-  const preload = network && join(network.dir, "preload.mjs");
+  // Shell scripts run with `sh`; profiling and network recording need a JS
+  // runtime, so they only apply to the other syntaxes.
+  const isShell = ext === "sh";
+  const scriptDir = !isShell && profileDir ? join(profileDir, fileStem) : undefined;
+  const networkFile = !isShell && network ? join(network.dir, `${fileStem}.ndjson`) : undefined;
+  const preload = !isShell && network ? join(network.dir, "preload.mjs") : undefined;
   const flags = [
     ...(scriptDir ? ["--cpu-prof", "--cpu-prof-dir", scriptDir] : []),
     ...(preload && runtime === "node"
@@ -109,8 +112,9 @@ const runScript = async (
     ...(preload && runtime === "bun" ? ["--preload", preload] : []),
   ];
   // Bun only takes these flags before the script, without `run`.
-  const command =
-    runtime === "node"
+  const command = isShell
+    ? ["sh", scriptPath]
+    : runtime === "node"
       ? ["node", ...flags, scriptPath]
       : flags.length > 0
         ? ["bun", ...flags, scriptPath]
