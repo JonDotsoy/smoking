@@ -59,6 +59,15 @@ describe("smoking CLI", () => {
     expect(stdout).toContain("✘ shell-fail\n  boom");
   });
 
+  test("runs `.sh` and `.bash` files and `bash` heredocs", () => {
+    const { exitCode, stdout } = runCli("shell-files.donly");
+
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("✔ sh-file");
+    expect(stdout).toContain("✔ bash-file");
+    expect(stdout).toContain("✔ bash-heredoc");
+  });
+
   test("--dependency installs extra packages as if declared in the file", () => {
     const { exitCode, stdout, stderr } = runCliWithArgs([
       "--dependency",

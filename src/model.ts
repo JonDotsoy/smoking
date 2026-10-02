@@ -6,9 +6,12 @@ import { parseSpec, type CaseSpec, type ScriptSpec, type Spec } from "./spec.ts"
 // In-memory model of a `.donly` or YAML file: both formats are parsed into the
 // same instances, so the rest of the code does not care which one it came from.
 
-export type Syntax = "ts" | "tsx" | "js" | "jsx" | "mjs" | "sh";
+export type Syntax = "ts" | "tsx" | "js" | "jsx" | "mjs" | "sh" | "bash" | "zsh";
 
-const SYNTAXES: readonly string[] = ["ts", "tsx", "js", "jsx", "mjs", "sh"];
+const SYNTAXES: readonly string[] = ["ts", "tsx", "js", "jsx", "mjs", "sh", "bash", "zsh"];
+
+export const isShellSyntax = (syntax: Syntax): boolean =>
+  syntax === "sh" || syntax === "bash" || syntax === "zsh";
 
 const isSyntax = (value: string): value is Syntax => SYNTAXES.includes(value);
 

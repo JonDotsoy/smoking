@@ -1,0 +1,12 @@
+case sh-file {
+  run ./external/configs/hello.sh
+}
+
+case bash-file {
+  run ./external/configs/hello.bash
+}
+
+case bash-heredoc {
+  run <<<bash
+    [[ -n "$BASH_VERSION" ]] && echo bash-ok
+}

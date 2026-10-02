@@ -7,7 +7,7 @@ import { ConsoleCapture, type Capture } from "./capture.ts";
 import networkPreload from "./network-preload.txt" with { type: "text" };
 import { readNetwork, type NetworkRequest } from "./network.ts";
 import { result } from "./utils/result.ts";
-import { SmokingFile, type Case, type Script } from "./model.ts";
+import { SmokingFile, isShellSyntax, type Case, type Script } from "./model.ts";
 
 export type CaseResult = {
   name: string;
@@ -98,9 +98,9 @@ const runScript = async (
     await writeFile(scriptPath, script.command);
   }
 
-  // Shell scripts run with `sh`; profiling and network recording need a JS
+  // Shell scripts run with their own interpreter (`sh`, `bash`, `zsh`); profiling and network recording need a JS
   // runtime, so they only apply to the other syntaxes.
-  const isShell = ext === "sh";
+  const isShell = isShellSyntax(ext);
   const scriptDir = !isShell && profileDir ? join(profileDir, fileStem) : undefined;
   const networkFile = !isShell && network ? join(network.dir, `${fileStem}.ndjson`) : undefined;
   const preload = !isShell && network ? join(network.dir, "preload.mjs") : undefined;
@@ -113,7 +113,7 @@ const runScript = async (
   ];
   // Bun only takes these flags before the script, without `run`.
   const command = isShell
-    ? ["sh", scriptPath]
+    ? [ext, scriptPath]
     : runtime === "node"
       ? ["node", ...flags, scriptPath]
       : flags.length > 0

@@ -27,6 +27,8 @@ const EXT_BY_DELIMITER: Record<string, string> = {
   jsx: "jsx",
   mjs: "mjs",
   sh: "sh",
+  bash: "bash",
+  zsh: "zsh",
 };
 
 export const YAML_EXTENSIONS = [".yaml", ".yml"];

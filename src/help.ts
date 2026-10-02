@@ -158,8 +158,8 @@ FILE FORMAT
 
     run <<<lang
         The script to execute. The heredoc delimiter picks the language:
-        ts (default), tsx, js, jsx, mjs or sh (shell commands; same for
-        setup and teardown). The
+        ts (default), tsx, js, jsx, mjs, sh, bash or zsh (shell commands;
+        same for setup and teardown). The
         script runs with its working directory set to the same folder the
         "file" directives write to, so relative paths like "./greeting.txt"
         just work. Required. Setup, run and teardown are separate processes:
@@ -169,7 +169,7 @@ FILE FORMAT
   with "dependencies" (list of packages) and "cases" (list). Each case takes
   "name", "env" (mapping), "files" (path -> content), "setup" / "teardown"
   (one script or a list) and "run". A script is a string (inline TypeScript),
-  "{ file: <path> }" or "{ code: <source>, lang: ts|tsx|js|jsx|mjs|sh }".
+  "{ file: <path> }" or "{ code: <source>, lang: ts|tsx|js|jsx|mjs|sh|bash|zsh }".
 
   Files referenced by "setup <path>" / "teardown <path>" run in place, so their
   own relative imports work, and with Bun they can import the packages you
