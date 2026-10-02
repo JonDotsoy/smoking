@@ -29,6 +29,8 @@ const EXT_BY_DELIMITER: Record<string, string> = {
   sh: "sh",
   bash: "bash",
   zsh: "zsh",
+  // Alias of `bash`.
+  shell: "bash",
 };
 
 export const YAML_EXTENSIONS = [".yaml", ".yml"];

@@ -66,6 +66,7 @@ describe("smoking CLI", () => {
     expect(stdout).toContain("✔ sh-file");
     expect(stdout).toContain("✔ bash-file");
     expect(stdout).toContain("✔ bash-heredoc");
+    expect(stdout).toContain("✔ shell-alias");
   });
 
   test("--dependency installs extra packages as if declared in the file", () => {

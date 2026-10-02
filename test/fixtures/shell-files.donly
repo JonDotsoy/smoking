@@ -10,3 +10,8 @@ case bash-heredoc {
   run <<<bash
     [[ -n "$BASH_VERSION" ]] && echo bash-ok
 }
+
+case shell-alias {
+  run <<<shell
+    [[ -n "$BASH_VERSION" ]] && echo shell-alias-ok
+}

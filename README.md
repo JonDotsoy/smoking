@@ -146,7 +146,7 @@ Inside a `case`:
   `run`, even if `setup` or `run` failed. If it fails the case fails too.
 
 `setup` and `teardown` can be repeated (they run in order). `setup`, `run` and
-`teardown` accept either an inline heredoc (`<<<ts`, `<<<js`, `<<<tsx`, `<<<jsx`, `<<<mjs`, `<<<sh`, `<<<bash`, `<<<zsh`;
+`teardown` accept either an inline heredoc (`<<<ts`, `<<<js`, `<<<tsx`, `<<<jsx`, `<<<mjs`, `<<<sh`, `<<<bash`, `<<<zsh`, `<<<shell` (alias of `bash`);
 the label picks the language; the shell ones run with that shell) or a path to a file. Paths are resolved relative
 to the `.donly` file, not to where you run `smoking`: in `app/cases.donly`,
 `setup ../configs/setup.ts` runs `configs/setup.ts`. Each script is its own
